@@ -30,22 +30,22 @@
 
 ## 🛠️ Technology Stack
 
-| Component         | Technology                                      |
-| ----------------- | ----------------------------------------------- |
+| Component         | Technology                                            |
+| ----------------- | ----------------------------------------------------- |
 | **Frontend**      | Next.js 14, React Flow, Zustand, Tailwind CSS, Lucide |
-| **Backend**       | FastAPI (Python 3.11+), SQLAlchemy, Pydantic    |
-| **Database**      | SQLite (Default for MVP) / PostgreSQL (Ready)   |
-| **Worker Engine** | Celery, Redis                                   |
-| **AI Processing** | OpenAI (Planning), HuggingFace (Inference)      |
+| **Backend**       | FastAPI (Python 3.11+), SQLAlchemy, Pydantic          |
+| **Database**      | SQLite (Default for MVP) / PostgreSQL (Ready)         |
+| **Worker Engine** | Celery, Redis                                         |
+| **AI Processing** | OpenAI (Planning), HuggingFace (Inference)            |
 
 ---
 
 ## 🏁 Getting Started
 
-### 1. Backend Setup
+### 1. Backend Setup (API)
 ```powershell
 # Navigate to the API folder
-cd workline-ai/apps/api
+cd apps/api
 
 # Install dependencies
 pip install -r requirements.txt
@@ -58,35 +58,34 @@ uvicorn app.main:app --reload
 ```
 *The API will be live at `http://localhost:8000`*
 
-### 2. Frontend Setup
+### 2. Frontend Setup (Web)
 ```powershell
 # Navigate to the Web folder
-cd workline-ai/apps/web
+cd apps/web
 
-# Install dependencies
+# Install dependencies (Next.js, React Flow, Zustand, Tailwind)
 npm install
 
 # Start the development server
 npm run dev
 ```
-*Access the platform at `http://localhost:3000`*
-
+*   **Access UI:** `http://localhost:3000`
+*   **Note:** Ensure `NEXT_PUBLIC_API_URL` is set if you change the backend port.
 ---
 
 ## 🧪 Try These Prompts
 
-Switch to the **"Automate"** tab (Lightning bolt icon) and try these natural language inputs:
+Switch to the **"Automate"** tab and try these natural language inputs:
 
 *   **Document Processing:** *"I want to classify PDFs and store them by job number."*
 *   **Human Approval:** *"Extract data from invoices, but send to a supervisor for approval if confidence is low."*
 *   **Mechanical Flow:** *"Analyze new mechanical drawings, find duplicates, and recommend a lead."*
 *   **HR Automation:** *"Filter resumes for technical skills and match candidates to interviewers."*
-
 ---
 
 ## 📁 Project Structure
 ```text
-workline-ai/
+Workline-AI/
 ├── apps/
 │   ├── web/                # Next.js 14 Frontend
 │   └── api/                # FastAPI Backend Service
@@ -98,10 +97,12 @@ workline-ai/
 
 ---
 
-## 🛠️ Current Status (MVP)
-- [x] Natural Language Graph Generation
-- [x] Dynamic Sidebar Workspaces
-- [x] Multi-Domain Block Library
-- [x] SQLite/Synchronous Fallback (Easy Dev)
-- [ ] Multi-user RBAC (In Progress)
-- [ ] Version Rollbacks (In Progress)
+## 🛠️ Current Status (v0.1.0-alpha)
+- [x] Backend Seeding & Idempotency
+- [x] Frontend Scaffolding (Next.js 14)
+- [x] Core Dependency Integration (React Flow, Zustand)
+- [x] SQLite/Synchronous Fallback
+- [/] Natural Language Graph Generation (In Progress)
+- [/] Multi-Domain Block Library (In Progress)
+- [ ] Multi-user RBAC (Planned)
+- [ ] Version Rollbacks (Planned)

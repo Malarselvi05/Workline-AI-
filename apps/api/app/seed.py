@@ -11,49 +11,62 @@ from app.models import models
 def seed():
     db = SessionLocal()
     try:
-        # Create a demo user
-        user = models.User(name="Admin User", email="admin@workline.ai", role="admin")
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+        # Get or create the demo user
+        user = db.query(models.User).filter(models.User.email == "admin@workline.ai").first()
+        if not user:
+            user = models.User(name="Admin User", email="admin@workline.ai", role="admin")
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+            print("Created admin user.")
+        else:
+            print("Admin user already exists, skipping.")
 
-        # Create the Document Classification workflow
-        workflow = models.Workflow(
-            name="Reference Document Classification",
-            description="Automatically classifies PDFs and stores them by job number.",
-            status="active",
-            created_by=user.id
-        )
-        db.add(workflow)
-        db.commit()
-        db.refresh(workflow)
+        # Get or create the Document Classification workflow
+        workflow = db.query(models.Workflow).filter(
+            models.Workflow.name == "Reference Document Classification",
+            models.Workflow.created_by == user.id
+        ).first()
 
-        # Add Nodes
-        nodes = [
-            models.WorkflowNode(
-                id="node_1", workflow_id=workflow.id, type="ocr", 
-                config_json={"file_type": "PDF"}, position_x=100.0, position_y=100.0
-            ),
-            models.WorkflowNode(
-                id="node_2", workflow_id=workflow.id, type="classify", 
-                config_json={"classes": ["Invoice", "PO", "Report"]}, position_x=350.0, position_y=100.0
-            ),
-            models.WorkflowNode(
-                id="node_3", workflow_id=workflow.id, type="store", 
-                config_json={"folder_pattern": "Job_{job_number}"}, position_x=600.0, position_y=100.0
+        if not workflow:
+            workflow = models.Workflow(
+                name="Reference Document Classification",
+                description="Automatically classifies PDFs and stores them by job number.",
+                status="active",
+                created_by=user.id
             )
-        ]
-        db.add_all(nodes)
+            db.add(workflow)
+            db.commit()
+            db.refresh(workflow)
 
-        # Add Edges
-        edges = [
-            models.WorkflowEdge(id="e1-2", workflow_id=workflow.id, source_node_id="node_1", target_node_id="node_2"),
-            models.WorkflowEdge(id="e2-3", workflow_id=workflow.id, source_node_id="node_2", target_node_id="node_3")
-        ]
-        db.add_all(edges)
-        
-        db.commit()
-        print("Demo workspace seeded successfully!")
+            # Add Nodes
+            nodes = [
+                models.WorkflowNode(
+                    id="node_1", workflow_id=workflow.id, type="ocr",
+                    config_json={"file_type": "PDF"}, position_x=100.0, position_y=100.0
+                ),
+                models.WorkflowNode(
+                    id="node_2", workflow_id=workflow.id, type="classify",
+                    config_json={"classes": ["Invoice", "PO", "Report"]}, position_x=350.0, position_y=100.0
+                ),
+                models.WorkflowNode(
+                    id="node_3", workflow_id=workflow.id, type="store",
+                    config_json={"folder_pattern": "Job_{job_number}"}, position_x=600.0, position_y=100.0
+                )
+            ]
+            db.add_all(nodes)
+
+            # Add Edges
+            edges = [
+                models.WorkflowEdge(id="e1-2", workflow_id=workflow.id, source_node_id="node_1", target_node_id="node_2"),
+                models.WorkflowEdge(id="e2-3", workflow_id=workflow.id, source_node_id="node_2", target_node_id="node_3")
+            ]
+            db.add_all(edges)
+
+            db.commit()
+            print("Demo workspace seeded successfully!")
+        else:
+            print("Workflow already exists, skipping.")
     finally:
         db.close()
 
