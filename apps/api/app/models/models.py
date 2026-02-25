@@ -116,3 +116,26 @@ class DriftAlert(Base):
     current_val = Column(Float)
     resolved = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(Integer, ForeignKey("organisations.id"), nullable=True)
+    workflow_id = Column(Integer, ForeignKey("workflows.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    turns = relationship("ConversationTurn", back_populates="conversation", cascade="all, delete-orphan")
+
+
+class ConversationTurn(Base):
+    __tablename__ = "conversation_turns"
+    id = Column(Integer, primary_key=True, index=True)
+    conversation_id = Column(Integer, ForeignKey("conversations.id"))
+    role = Column(String)  # "user" | "assistant"
+    content = Column(Text)
+    proposal_json = Column(JSON, nullable=True)  # full WorkflowProposal for assistant turns
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    conversation = relationship("Conversation", back_populates="turns")
+

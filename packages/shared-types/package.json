@@ -1,0 +1,11 @@
+{
+    "name": "@workline/shared-types",
+    "version": "0.1.0",
+    "private": true,
+    "main": "./api_schemas.ts",
+    "types": "./api_schemas.ts",
+    "files": [
+        "*.py",
+        "*.ts"
+    ]
+}

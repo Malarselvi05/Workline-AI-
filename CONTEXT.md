@@ -1,311 +1,258 @@
-# WorkLine AI — Project Context & Status
-> **Purpose**: This file is the single source of truth for team collaboration and AI model context.
+> **Purpose**: Running state-of-the-codebase document for both human devs and AI assistants.
 > **Rule**: Every time you make significant code changes, update the relevant section of this file.
-> **Team Plan**: See [`TEAM_PLAN.md`](./TEAM_PLAN.md) for the full phase-by-phase checklist for Member J (Frontend) and Member M (Backend).
-> **Claude Prompt**: `TEAM_PLAN.md` is built from the Claude Prompt v2.0 (full spec). Use that spec as the authoritative product reference.
-> **Last Updated**: 2026-02-25
+> **Team Plan**: See [`TEAM_PLAN.md`](./TEAM_PLAN.md) for the full phase-by-phase checklist for Member J and Member M.
+> **Last Updated**: 2026-02-25 (Shared Setup complete + J1 — Conversation & Planning Backend complete)
 
 ---
 
-## 🎯 Project Goal
-
-**WorkLine AI** is a no-code, graph-based AI workflow automation platform. Non-technical users describe a business process in plain English → an agentic chatbot converts it into an executable DAG (Directed Acyclic Graph) → users can test, deploy, and monitor the automation visually on a canvas.
-
-Think: **n8n + GPT-powered workflow designer**, designed for document intake, classification, task routing, approvals, and monitoring across multiple domains.
-
----
-
-## 🏗️ Monorepo Structure
+## 📁 Monorepo Structure
 
 ```
 Workline-AI/
+├── package.json            ✅ Root Turborepo workspace manifest
+├── turbo.json              ✅ Turborepo pipeline (build / dev / lint / type-check)
+├── CONTEXT.md              ✅ This file
+├── TEAM_PLAN.md            ✅ Phase-by-phase task checklist
+├── README.md               ✅ Project overview + setup guide
+│
 ├── apps/
-│   ├── api/                    ✅ Backend (FastAPI) — EXISTS & PARTIAL
+│   ├── api/                ✅ Backend (FastAPI) — WITH REAL LLM
 │   │   ├── app/
-│   │   │   ├── main.py         ✅ API routes (CRUD + run + WebSocket)
-│   │   │   ├── seed.py         ✅ DB seeder (demo workflows)
+│   │   │   ├── main.py         ✅ API entrypoint (planning + workflows + auth routers)
+│   │   │   ├── seed.py         ✅ DB seeder (demo orgs, users, workflows)
+│   │   │   ├── ai/
+│   │   │   │   └── planner.py  ✅ GroqPlanner (llama-3.3-70b-versatile, real LLM) [J1]
+│   │   │   ├── auth/
+│   │   │   │   ├── dependencies.py ✅ get_current_user, require_viewer / require_editor / require_admin
+│   │   │   │   └── jwt.py          ✅ create_access_token, decode_access_token
 │   │   │   ├── core/
-│   │   │   │   ├── celery_app.py ✅ Celery + Redis config
-│   │   │   │   └── tasks.py    ✅ execute_workflow_task (Celery task)
+│   │   │   │   ├── celery_app.py   ✅ Celery + Redis broker config
+│   │   │   │   ├── context.py      ✅ Domain context string for LLM prompt
+│   │   │   │   └── tasks.py        ✅ execute_workflow_task (Celery task)
 │   │   │   ├── db/
-│   │   │   │   └── session.py  ✅ SQLite engine / PostgreSQL-ready
+│   │   │   │   └── session.py      ✅ SQLite engine / PostgreSQL-ready, get_db dependency
 │   │   │   ├── models/
-│   │   │   │   └── models.py   ✅ All DB tables defined
-│   │   │   └── services/
-│   │   │       └── planner.py  ⚠️ AI planner (keyword MOCK — not real LLM)
-│   │   ├── .env                ✅ Env vars (OPENAI_API_KEY, etc.)
+│   │   │   │   └── models.py       ✅ All SQLAlchemy ORM models [see DB Schema section]
+│   │   │   ├── routers/
+│   │   │   │   ├── auth.py         ✅ POST /auth/login, /auth/register
+│   │   │   │   ├── workflows.py    ✅ Full workflow CRUD + deploy + run + rollback + runs
+│   │   │   │   └── planning.py     ✅ POST /plan + GET /conversations/{id} [J1]
+│   │   │   ├── schemas/
+│   │   │   │   ├── auth.py         ✅ Login / token Pydantic schemas
+│   │   │   │   └── workflow.py     ✅ Detailed workflow request/response schemas
+│   │   │   └── services/           (empty — planner.py mock deleted in J1)
+│   │   ├── alembic/            ✅ Migration system
+│   │   │   └── versions/       ✅ 3 migrations applied (initial, password, conversations)
+│   │   ├── .env                ✅ Dev env vars (GROQ_API_KEY, DATABASE_URL, REDIS_URL) [J1]
 │   │   ├── .env.example        ✅ Template for new devs
+│   │   ├── requirements.txt    ✅ Python deps (groq replaces openai) [J1]
 │   │   ├── Dockerfile          ✅ API Docker image
-│   │   ├── requirements.txt    ✅ Python deps
-│   │   └── workline.db         ✅ SQLite dev database (seeded)
+│   │   └── workline.db         ✅ SQLite dev database (seeded, all migrations applied)
 │   │
-│   └── web/                    ✅ Frontend (Next.js 14) — IMPLEMENTED
+│   └── web/                    ✅ Frontend (Next.js 14, App Router)
 │       ├── app/
-│       │   ├── layout.tsx       ✅ Root layout (sidebar + main)
-│       │   ├── page.tsx         ✅ Redirect to /dashboard
-│       │   ├── globals.css      ✅ Dark-mode design system
-│       │   ├── dashboard/page.tsx ✅ KPI cards + runs table + drift alerts
-│       │   ├── automate/page.tsx ✅ Canvas + block palette + chatbot
-│       │   ├── workflow/[id]/page.tsx ✅ Detail page (Runs/Results/Logs/Settings)
-│       │   └── login/page.tsx   ✅ Login stub (no real auth)
+│       │   ├── layout.tsx          ✅ Root layout (Inter font, dark theme globals)
+│       │   ├── page.tsx            ✅ Landing / redirect page
+│       │   ├── login/page.tsx      ✅ Login stub
+│       │   ├── dashboard/page.tsx  ✅ Dashboard (mock stats + workflow list)
+│       │   ├── automate/page.tsx   ✅ Canvas + chatbot split-view
+│       │   └── workflow/[id]/page.tsx ✅ Workflow detail page
 │       ├── components/
-│       │   ├── workspace/Sidebar.tsx ✅ Collapsible sidebar + workflow tabs
 │       │   ├── canvas/
-│       │   │   ├── nodes/WorkflowNode.tsx ✅ Custom React Flow node
-│       │   │   ├── BlockPalette.tsx ✅ Searchable block palette (drag-to-drop)
-│       │   │   └── Toolbar.tsx  ✅ Validate/Simulate/Save/Deploy toolbar
-│       │   └── chatbot/ChatPanel.tsx ✅ AI chat panel with Apply to Canvas
-│       ├── stores/
-│       │   ├── workspaceStore.ts ✅ Workflow list + sidebar state
-│       │   ├── canvasStore.ts   ✅ React Flow state + block registry (20 block types)
-│       │   └── chatStore.ts     ✅ Chat messages + planner API
-│       └── lib/api.ts           ✅ Typed API service layer
+│       │   │   ├── BlockPalette.tsx    ✅ Draggable block palette (by category)
+│       │   │   ├── Toolbar.tsx         ✅ Canvas toolbar (Save, Deploy, Undo, etc.)
+│       │   │   └── nodes/WorkflowNode.tsx ✅ React Flow custom node
+│       │   ├── chatbot/
+│       │   │   └── ChatPanel.tsx       ✅ AI chat input → calls /plan → loads canvas
+│       │   └── workspace/
+│       │       └── Sidebar.tsx         ✅ Navigation sidebar
+│       ├── lib/
+│       │   └── api.ts              ✅ Typed fetch wrappers (all endpoints, auth headers) [Shared Setup]
+│       ├── .env.example            ✅ NEXT_PUBLIC_API_URL, NEXT_PUBLIC_WS_URL [Shared Setup]
+│       ├── next.config.mjs         ✅
+│       └── package.json            ✅ web package (npm workspace)
 │
 ├── packages/
-│   ├── workflow_engine/        ✅ DAG execution engine
-│   │   └── engine.py          ✅ Topological sort + async block execution
-│   └── block_library/         ✅ Block stubs (all MOCK — no real AI)
-│       └── src/
-│           ├── generic/
-│           │   └── blocks.py  ⚠️ OCRBlock, ClassifyBlock, StoreFileBlock (mocked)
-│           └── mechanical/
-│               └── blocks.py  ⚠️ DrawingClassifier, POExtractor, DuplicateDetector, TeamLeaderRecommender (mocked)
+│   ├── shared-types/           ✅ NEW — canonical type definitions [Shared Setup]
+│   │   ├── block_registry.py   ✅ Pydantic BlockDefinition, 21 blocks, VALID_BLOCK_TYPES
+│   │   ├── block_registry.ts   ✅ TypeScript mirror, getBlocksByCategory() helper
+│   │   ├── api_schemas.py      ✅ All Pydantic request/response models
+│   │   ├── api_schemas.ts      ✅ All TypeScript interfaces
+│   │   └── package.json        ✅ @workline/shared-types manifest
+│   ├── block_library/          ✅ Block execution implementations (Python)
+│   └── workflow_engine/        ✅ Workflow runner + engine.py
 │
 └── infra/
-    └── docker/                ⚠️ Dockerfile for API exists; compose & k8s missing
+    └── docker/
+        └── docker-compose.yml  ✅ FastAPI + PostgreSQL 16 + Redis 7 + MinIO
 ```
 
 ---
 
-## ✅ What Has Been Implemented
+## 🗄️ Database Schema (SQLAlchemy → SQLite / PostgreSQL)
 
-### Backend (FastAPI — `apps/api`)
+| Table                | Key Columns                                                                               | Notes                                                    |
+| -------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `organisations`      | id, name, plan, created_at                                                                | Multi-tenant root                                        |
+| `users`              | id, org_id, name, email, password_hash, role                                              | Roles: admin, editor, viewer                             |
+| `workflows`          | id, org_id, name, description, status, version, parent_version_id, created_by, created_at | status: draft/active/archived                            |
+| `workflow_nodes`     | id (String), workflow_id, type, config_json, position_x, position_y, reasoning            | id is string e.g. "node_1"                               |
+| `workflow_edges`     | id (String), workflow_id, source_node_id, target_node_id, edge_type                       | edge_type: default/condition_true/condition_false        |
+| `workflow_runs`      | id, workflow_id, status, started_at, ended_at, logs                                       | status: pending/running/completed/failed/awaiting_review |
+| `run_node_states`    | id, run_id, node_id, status, started_at, ended_at, output_json, error                     | Per-node run state                                       |
+| `files`              | id, org_id, workflow_id, path, hash, metadata_json                                        | MinIO-backed storage                                     |
+| `models`             | id, name, type, version, metrics_json                                                     | Registered ML models                                     |
+| `audit_logs`         | id, org_id, user_id, action, entity_type, entity_id, timestamp                            | Audit trail                                              |
+| `drift_alerts`       | id, workflow_id, metric, baseline_val, current_val, resolved, created_at                  |                                                          |
+| `conversations`      | id, org_id, workflow_id, created_at                                                       | Chat sessions [J1]                                       |
+| `conversation_turns` | id, conversation_id, role, content, proposal_json, created_at                             | role: user/assistant [J1]                                |
 
-| Feature                                                                                           | File                                   | Status                                  |
-| ------------------------------------------------------------------------------------------------- | -------------------------------------- | --------------------------------------- |
-| FastAPI app bootstrap + CORS                                                                      | `main.py`                              | ✅ Done                                  |
-| `POST /workflows/plan` → AI planner                                                               | `main.py` + `planner.py`               | ✅ Route done, ⚠️ planner is keyword mock |
-| `POST /workflows` → save to DB                                                                    | `main.py`                              | ✅ Done                                  |
-| `GET /workflows` → list all                                                                       | `main.py`                              | ✅ Done                                  |
-| `POST /workflows/{id}/run` → execute                                                              | `main.py` + `tasks.py`                 | ✅ Done                                  |
-| `GET /workflows/{id}/runs` → run history                                                          | `main.py`                              | ✅ Done                                  |
-| `WebSocket /ws/status/{id}` → live status                                                         | `main.py`                              | ⚠️ Stub (echo only)                      |
-| Celery task for async workflow execution                                                          | `core/tasks.py` + `core/celery_app.py` | ✅ Done                                  |
-| Sync fallback if Celery/Redis not running                                                         | `main.py`                              | ✅ Done                                  |
-| DB Models: User, Workflow, WorkflowNode, WorkflowEdge, WorkflowRun, File, ModelMetadata, AuditLog, Organisation, RunNodeState, DriftAlert | `models/models.py` | ✅ All updated for M1 |
-| SQLite dev database                                                                               | `db/session.py` + `workline.db`        | ✅ Done                                  |
-| DB Seeder with demo workflow, organisations and reasoning                                         | `seed.py`                              | ✅ Done, handles multi-tenancy           |
-| Docker-Compose stack (API, Postgres, Redis, MinIO)                                                | `infra/docker/docker-compose.yml`      | ✅ Done                                  |
-| Alembic Migration System                                                                          | `alembic/`, `alembic.ini`              | ✅ Done                                  |
-| SQLAlchemy Multi-tenancy listener                                                                 | `db/session.py`                        | ✅ Done                                  |
-| JWT Auth (Login/Refresh/Logout)                                                                   | `auth/jwt.py` + `routers/auth.py`      | ✅ Done                                  |
-| RBAC Dependencies (Admin/Editor/Viewer)                                                           | `auth/dependencies.py`                 | ✅ Done                                  |
-| Next.js Auth Middleware + Interceptors                                                            | `middleware.ts` + `lib/api.ts`         | ✅ Done                                  |
-| UI Login Page + Auth State                                                                        | `app/login/` + `store/useAuthStore.ts` | ✅ Done                                  |
-
-### Workflow Engine (`packages/workflow_engine`)
-
-| Feature                                 | File        | Status |
-| --------------------------------------- | ----------- | ------ |
-| DAG topological sort (Kahn's algorithm) | `engine.py` | ✅ Done |
-| Async `execute()` runner                | `engine.py` | ✅ Done |
-| Block registry (type → class map)       | `engine.py` | ✅ Done |
-
-### Block Library (`packages/block_library`)
-
-| Block                           | Pack       | Status                               |
-| ------------------------------- | ---------- | ------------------------------------ |
-| `OCRBlock`                      | Generic    | ⚠️ Mock (prints, returns static text) |
-| `ClassifyBlock`                 | Generic    | ⚠️ Mock (hardcoded "Invoice" + 0.95)  |
-| `StoreFileBlock`                | Generic    | ⚠️ Mock (hardcoded path)              |
-| `DrawingClassifierBlock`        | Mechanical | ⚠️ Mock                               |
-| `POExtractorBlock`              | Mechanical | ⚠️ Mock                               |
-| `DuplicateDrawingDetectorBlock` | Mechanical | ⚠️ Mock                               |
-| `TeamLeaderRecommenderBlock`    | Mechanical | ⚠️ Mock                               |
-
-### Frontend (Next.js 14 — `apps/web`)
-
-| Feature                                                     | File(s)                                 | Status                  |
-| ----------------------------------------------------------- | --------------------------------------- | ----------------------- |
-| App shell + sidebar with workflow tabs                      | `layout.tsx`, `Sidebar.tsx`             | ✅ Done                  |
-| Dashboard: KPI cards, runs table, drift alerts              | `dashboard/page.tsx`                    | ✅ Done (mock data)      |
-| Canvas: React Flow + custom nodes + drag-drop               | `automate/page.tsx`, `WorkflowNode.tsx` | ✅ Done                  |
-| Block palette: searchable, category-grouped, drag-to-canvas | `BlockPalette.tsx`                      | ✅ Done (20 block types) |
-| Toolbar: validate, simulate, save, deploy                   | `Toolbar.tsx`                           | ✅ Done                  |
-| Chatbot panel: message thread + Apply to Canvas             | `ChatPanel.tsx`                         | ✅ Done                  |
-| Workflow detail page: Runs/Results/Logs/Settings tabs       | `workflow/[id]/page.tsx`                | ✅ Done                  |
-| Login stub                                                  | `login/page.tsx`                        | ✅ Done (no real auth)   |
-| Zustand stores (workspace, canvas, chat)                    | `stores/*.ts`                           | ✅ Done                  |
-| API service layer (typed fetch wrappers)                    | `lib/api.ts`                            | ✅ Done                  |
-| Design system: dark mode, glass cards, animations           | `globals.css`, `tailwind.config.ts`     | ✅ Done                  |
-
-### AI Planner (`apps/api/app/services/planner.py`)
-
-- Architecture is **keyword-matching mock** (not a real LLM call)
-- Returns hardcoded node/edge JSON for 6 fixed scenarios (`classify+pdf`, `mechanical/drawing`, `approval/human/confidence`, `notify/api/form`, `resume/hiring`, `support/complaint/ticket`)
-- Fallback: returns empty nodes and a "I'm not sure" message
-- `OPENAI_API_KEY` is loaded but **never used** currently
+**Applied Alembic Migrations:**
+1. `7c4bff9d1fb8_initial_m1_setup.py`
+2. `06e4945f3618_add_user_password.py`
+3. `0e785d094cbd_add_conversations_and_conversation_turns.py` [J1]
 
 ---
 
-## ❌ What Is NOT Yet Implemented
+## 🔌 API Endpoints
 
-### 🟢 Frontend — MVP DONE (`apps/web/`)
-
-All core frontend pages, components, and stores have been implemented. Remaining items:
-- [ ] WebSocket client for live run status updates (currently using REST polling)
-- [ ] Real-time collaborative editing
-- [ ] Mobile canvas editing graceful degradation
-
-### 🟠 Backend — Missing or Incomplete
-
-- [ ] **Real LLM integration in `planner.py`**: Replace keyword mocks with actual GPT-4o / gpt-4.1 calls using the system prompt that describes the block library and requests JSON DAG output
-- [ ] **Authentication & RBAC**: JWT-based auth endpoints (`/auth/login`, `/auth/register`), role enforcement (admin, analyst, viewer). `python-jose` and `passlib` are already in requirements but not wired in
-- [ ] **Workflow versioning**: `version` column exists on `Workflow` model but no version bump or rollback logic
-- [ ] **Drift alerts**: No monitoring/alerting logic for workflow performance degradation
-- [ ] **WebSocket real status**: Currently the WebSocket handler is an echo stub — needs to broadcast actual task progress from Celery to frontend
-- [ ] **File upload endpoint**: No `POST /files` route; `File` model exists in DB
-- [ ] **Audit log writes**: `AuditLog` model defined but nothing writes to it
-- [ ] `WorkflowRun` record creation/update: `tasks.py` has a `# ...` comment but doesn't actually persist run start/end/status to DB
-- [ ] Alembic migrations setup (listed in requirements, but no `/alembic` folder or `alembic.ini`); currently using `create_all()` directly
-
-### 🟡 Block Library — Real AI Integration
-
-- [ ] **`OCRBlock`**: Integrate Tesseract / PaddleOCR for real OCR
-- [ ] **`ClassifyBlock`**: Integrate `facebook/bart-large-mnli` (zero-shot) or `distilbert` via HuggingFace Inference API
-- [ ] **`DuplicateDrawingDetectorBlock`**: Integrate `BAAI/bge-large-en-v1.5` or `text-embedding-3-large` for real cosine similarity
-- [ ] **`TeamLeaderRecommenderBlock`**: Integrate XGBoost / Gradient Boosting model
-- [ ] **`StoreFileBlock`**: Integrate real filesystem / S3-compatible storage
-- [ ] **`HumanReviewBlock`**: New block — pause execution, send notification, wait for human approval via API callback
-- [ ] **Additional blocks not yet in registry**:
-  - `FormInputBlock`, `APITriggerBlock` (Input pack)
-  - `ParseBlock`, `CleanBlock`, `MapFieldsBlock` (Transform pack)
-  - `RouterBlock`, `ScoreBlock` (Decide pack)
-  - `RecommendBlock` (AI pack)
-  - `CreateTaskBlock`, `NotifyBlock` (Act pack)
-  - `DashboardOutputBlock`, `ExportBlock` (Output pack)
-  - HR Pack: `ResumeFilterBlock`, `CandidateMatchBlock`
-
-### 🟡 Infra
-
-- [ ] `docker-compose.yml` for running API + Redis + PostgreSQL together
-- [ ] Kubernetes manifests (k8s folder mentioned in original design but doesn't exist)
-- [ ] Dockerfile for the frontend
-- [ ] CI/CD pipeline (GitHub Actions)
+| Endpoint                                     | File                                     | Status                                   |
+| -------------------------------------------- | ---------------------------------------- | ---------------------------------------- |
+| `POST /auth/login`                           | `routers/auth.py`                        | ✅ Done                                   |
+| `POST /auth/register`                        | `routers/auth.py`                        | ✅ Done                                   |
+| `POST /plan`                                 | `routers/planning.py` + `ai/planner.py`  | ✅ Real Groq llama-3.3-70b-versatile [J1] |
+| `GET /conversations/{id}`                    | `routers/planning.py`                    | ✅ Done [J1]                              |
+| `GET /workflows`                             | `routers/workflows.py`                   | ✅ Done                                   |
+| `POST /workflows`                            | `routers/workflows.py`                   | ✅ Done                                   |
+| `GET /workflows/{id}`                        | `routers/workflows.py`                   | ✅ Done                                   |
+| `PATCH /workflows/{id}`                      | `routers/workflows.py`                   | ✅ Done                                   |
+| `DELETE /workflows/{id}`                     | `routers/workflows.py`                   | ✅ Done                                   |
+| `POST /workflows/{id}/deploy`                | `routers/workflows.py`                   | ✅ Done                                   |
+| `POST /workflows/{id}/run`                   | `routers/workflows.py` + `core/tasks.py` | ✅ Done (Celery)                          |
+| `GET /workflows/{id}/runs`                   | `routers/workflows.py`                   | ✅ Done                                   |
+| `POST /workflows/{id}/rollback/{version_id}` | `routers/workflows.py`                   | ✅ Done                                   |
+| `WS /ws/status/{workflow_id}`                | `main.py`                                | ✅ Done                                   |
 
 ---
 
-## 🔑 Environment Variables
+## 🖥️ Frontend Components
 
-Located at `apps/api/.env` (use `.env.example` as the template):
-
-| Variable         | Purpose                                 | Status                                 |
-| ---------------- | --------------------------------------- | -------------------------------------- |
-| `OPENAI_API_KEY` | For real LLM calls in `planner.py`      | Set but unused                         |
-| `DATABASE_URL`   | PostgreSQL URL (SQLite used by default) | Optional                               |
-| `REDIS_URL`      | Redis broker for Celery                 | Defaults to `redis://localhost:6379/0` |
+| Component              | Path                                       | Status                               |
+| ---------------------- | ------------------------------------------ | ------------------------------------ |
+| Canvas split-view page | `app/automate/page.tsx`                    | ✅ Done                               |
+| Workflow detail page   | `app/workflow/[id]/page.tsx`               | ✅ Done                               |
+| Dashboard              | `app/dashboard/page.tsx`                   | ✅ Done (mock stats)                  |
+| Login stub             | `app/login/page.tsx`                       | ✅ Done                               |
+| ChatPanel (chatbot)    | `components/chatbot/ChatPanel.tsx`         | ✅ Done (calls `/plan`)               |
+| Sidebar                | `components/workspace/Sidebar.tsx`         | ✅ Done                               |
+| BlockPalette           | `components/canvas/BlockPalette.tsx`       | ✅ Done                               |
+| Toolbar                | `components/canvas/Toolbar.tsx`            | ✅ Done                               |
+| WorkflowNode           | `components/canvas/nodes/WorkflowNode.tsx` | ✅ Done                               |
+| API service layer      | `lib/api.ts`                               | ✅ Done (all endpoints, auth headers) |
 
 ---
 
-## 🚀 How to Run Locally (Current State)
+## 🤖 AI Planner (`apps/api/app/ai/planner.py`) [J1 — DONE]
 
-### Backend
+- **Real Groq LLM integration** — `llama-3.3-70b-versatile` (temperature 0.2, JSON mode)
+- **4-layer prompt**: system persona + full 21-block registry snapshot + domain context + user goal + last 8 conversation turns
+- **DAG validation**: every `type` checked against `BLOCK_REGISTRY`; cycle detection via topological sort (Kahn's)
+- **Retry**: if validation fails, retries once with the error message appended as a follow-up message
+- **Dagre-style layout**: topological BFS assigns `position_x`/`position_y` (250px x-gap, 160px y-gap)
+- **Conversation persistence**: saves `user` and `assistant` `ConversationTurn` (with full `proposal_json`) to DB
+- Old `services/planner.py` keyword mock has been **deleted**
+- `GROQ_API_KEY` must be set in `.env`
 
-```powershell
-cd d:\MiniProject\Workline-AI\apps\api
+---
 
-# Install deps
+## 📦 Shared Types (`packages/shared-types/`) [Shared Setup — DONE]
+
+**block_registry.py / block_registry.ts** — 21 block types across 9 categories:
+
+| Category   | Blocks                                                                                |
+| ---------- | ------------------------------------------------------------------------------------- |
+| Input      | `file_upload`, `api_trigger`, `form_input`                                            |
+| Extract    | `ocr`, `parse`                                                                        |
+| Transform  | `clean`, `map_fields`                                                                 |
+| Decide     | `router`, `score`                                                                     |
+| AI         | `classify`, `recommend`                                                               |
+| Human      | `human_review`                                                                        |
+| Act        | `store`, `notify`, `create_task`                                                      |
+| Output     | `dashboard_out`, `export`                                                             |
+| Mechanical | `drawing_classifier`, `po_extractor`, `duplicate_detector`, `team_leader_recommender` |
+
+**api_schemas.py / api_schemas.ts** — Shared request/response types for all endpoints:
+- `PlanRequest`, `WorkflowProposal`, `ConversationOut`, `ConversationTurnOut`
+- `WorkflowCreateRequest`, `Workflow`, `WorkflowDetail`
+- `WorkflowRun`, `RunTriggerResponse`
+- `LoginRequest`, `TokenResponse`
+
+---
+
+## ⚠️ What's NOT Done Yet
+
+### 🟠 Backend
+- [ ] **Authentication wiring**: JWT login/register exist but RBAC is not enforced on all routes
+- [ ] **Workflow versioning**: `version` column exists but no bump/rollback UI logic
+- [ ] **Drift alerts**: no monitoring/alerting logic yet
+- [ ] **MinIO file storage**: routes exist but actual MinIO calls not wired
+
+### 🟡 Frontend (J2–J4 remaining)
+- [ ] **ChatPanel** → needs to call `POST /plan` with real `conversation_id` state
+- [ ] **canvasStore** → needs to import block types from `packages/shared-types/block_registry.ts`
+- [ ] **Dashboard** → mock data, not wired to real API
+- [ ] **WorkflowDetail** → partial, no save-to-DB flow
+- [ ] **Human review** → no UI for awaiting_review run state yet
+
+### 🟢 Shared Setup (all done ✅)
+- All `packages/shared-types/` files created
+- Turborepo root `package.json` + `turbo.json` created
+- `apps/web/.env.example` created
+- `lib/api.ts` fully updated with auth headers and all endpoints
+
+---
+
+## 🌍 Environment Variables
+
+| Variable              | Purpose                                 | Status                                     |
+| --------------------- | --------------------------------------- | ------------------------------------------ |
+| `GROQ_API_KEY`        | Real LLM calls in `ai/planner.py`       | **Required** — set in `apps/api/.env` [J1] |
+| `DATABASE_URL`        | PostgreSQL URL (SQLite used by default) | Optional                                   |
+| `REDIS_URL`           | Redis broker for Celery                 | Defaults to `redis://localhost:6379/0`     |
+| `JWT_SECRET_KEY`      | JWT signing secret                      | Required for auth                          |
+| `NEXT_PUBLIC_API_URL` | Frontend → Backend URL                  | Defaults to `http://localhost:8000`        |
+| `NEXT_PUBLIC_WS_URL`  | Frontend → WebSocket URL                | Defaults to `ws://localhost:8000`          |
+
+---
+
+## 🚀 Running Locally
+
+```bash
+# Backend
+cd apps/api
 pip install -r requirements.txt
-
-# Seed demo data (safe to run multiple times)
+alembic upgrade head
 python app/seed.py
-
-# Start API
 uvicorn app.main:app --reload
-# → Running at http://localhost:8000
-# → Swagger docs at http://localhost:8000/docs
-```
+# Swagger: http://localhost:8000/docs
 
-### Frontend
-```powershell
-cd d:\MiniProject\Workline-AI\apps\web
+# Frontend
+cd apps/web
 npm install
 npm run dev
-# → Running at http://localhost:3000
-# → Dashboard at http://localhost:3000/dashboard
-# → Canvas at http://localhost:3000/automate
+# App: http://localhost:3000
 ```
-
-### Background Worker (optional, needs Redis)
-```powershell
-cd d:\MiniProject\Workline-AI\apps\api
-celery -A app.core.celery_app.celery_app worker --loglevel=info
-```
-
----
-
-## 🗄️ Database Schema (Implemented)
-
-All tables created via `models.Base.metadata.create_all()` on startup:
-
-| Table            | Key Columns                                            | Notes                                      |
-| ---------------- | ------------------------------------------------------ | ------------------------------------------ |
-| `organisations`  | id, name, plan, created_at                             | ✅ New Table (Multi-tenancy root)          |
-| `users`          | id, org_id, name, email, role, created_at              | ✅ FK to organisations added               |
-| `workflows`      | id, org_id, name, description, status, version, parent_version_id, created_by | ✅ Multi-tenancy + Versioning added |
-| `workflow_nodes` | id (str), workflow_id, type, config_json, position_x/y, reasoning | ✅ reasoning column added             |
-| `workflow_edges` | id (str), workflow_id, source_node_id, target_node_id, edge_type | ✅ edge_type added                  |
-| `workflow_runs`  | id, workflow_id, status, started_at, ended_at, logs    | ✅ awaiting_review status added            |
-| `run_node_states`| id, run_id, node_id, status, started_at, ended_at, output_json, error | ✅ New Table (detailed run tracking) |
-| `files`          | id, org_id, workflow_id, path, hash, metadata_json     | ✅ FK to organisations added               |
-| `models`         | id, name, type, version, metrics_json                  | AI model registry                          |
-| `audit_logs`     | id, org_id, user_id, action, entity_type, entity_id, timestamp | ✅ FK back to orgs + append-only logic |
-| `drift_alerts`   | id, workflow_id, metric, baseline_val, current_val, resolved | ✅ New Table (Drift monitoring)       |
-
----
-
-## 📌 Next Steps — See TEAM_PLAN.md
-
-> Detailed per-member, per-phase checklists are in **[TEAM_PLAN.md](./TEAM_PLAN.md)**.
-
-**Phase 1 priorities (both members working in parallel):**
-
-| Member J (Frontend)                               | Member M (Backend)                                       |
-| ------------------------------------------------- | -------------------------------------------------------- |
-| Scaffold Next.js 14 in `apps/web/`                | Restructure `apps/api/` to spec layout + Alembic         |
-| App shell: sidebar, layout, routing               | Auth: JWT endpoints + RBAC dependencies                  |
-| Canvas: React Flow + custom node types            | Real LLM planner via LiteLLM (replace keyword mock)      |
-| Chatbot panel: message thread + proposal renderer | Upgrade workflow engine: parallel exec + retry + sandbox |
-| Dashboard: KPI cards + run table                  | Real WebSocket: Redis pub/sub → per-node status stream   |
-| Auth UI: login + token refresh interceptor        | `docker-compose.yml` for full local stack                |
-
-**Integration point**: After Phase 1 tasks complete, run the Integration Checkpoint in `TEAM_PLAN.md`.
-
----
-
-## 🤝 Team Contribution Areas
-
-Both members are full-stack. Work is split **by feature/module**, not by layer (UI vs backend).
-Each member owns a feature end-to-end: its DB schema, API routes, services, AND frontend UI.
-
-| Phase       | **Member J**                                                                 | **Member M**                                                                                     |
-| ----------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| **Phase 1** | Canvas + Chatbot (LLM planner, React Flow UI, chatbot panel, save/deploy UI) | Foundation + Auth + Engine (Alembic, RBAC, workflow CRUD, DAG engine, block library, WebSockets) |
-| **Phase 2** | Dashboard + Run Monitoring (drift detection, KPI cards, run timeline UI)     | Human Review + Versioning + ML Blocks (XGBoost, embedding, rollback, diff view)                  |
-| **Phase 3** | Scheduled Triggers + On-Prem ( Celery beat, docker-compose.onprem.yml)       | Domain Packs + CI/CD + UI Polish (pack installer, GitHub Actions, accessibility)                 |
-
-> See **[TEAM_PLAN.md](./TEAM_PLAN.md)** for the full per-phase checklist per member.
-
 
 ---
 
 ## 💡 AI Model Notes (for future AI assistants reading this file)
 
-- All block `run()` methods return **hardcoded mock data** — they do not call any real ML model
-- The `planner.py` service matches keywords, not intent — the OpenAI API call is scaffolded but commented out
-- The frontend is **implemented** with Next.js 14, React Flow, Zustand, and Tailwind CSS
-- The backend API is fully functional via Swagger at `http://localhost:8000/docs`
-- `workline.db` is the live SQLite file; don't commit large changes to it
-- React Flow nodes use **string IDs** (e.g., `"node_1"`) — the DB `WorkflowNode.id` is a String type to match this
-- The canvas store includes a registry of **20 block types** across 7 categories
+- All block `run()` methods in `packages/block_library/` return **hardcoded mock data** — no real ML yet
+- `ai/planner.py` uses **Groq `llama-3.3-70b-versatile`** with JSON mode — old keyword mock deleted [J1]
+- The planning endpoint is `POST /plan` (not the old `/workflows/plan`)
+- `packages/shared-types/block_registry.py` and `block_registry.ts` are the **single source of truth** for all 21 block types; always keep them in sync
+- `workline.db` is the live SQLite file — don't commit large data changes to it
+- React Flow nodes use **string IDs** (e.g., `"node_1"`) — the DB `WorkflowNode.id` is a String type to match
 - Dashboard data is currently **mock** — wire to real API endpoints in Phase 2
+- `Conversation` and `ConversationTurn` tables store chatbot history; restored via `GET /conversations/{id}` [J1]
+- Branch naming convention: `feature/J-<name>` (Member J) and `feature/M-<name>` (Member M), merged via PR

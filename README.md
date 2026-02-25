@@ -30,13 +30,13 @@
 
 ## 🛠️ Technology Stack
 
-| Component         | Technology                                            |
-| ----------------- | ----------------------------------------------------- |
-| **Frontend**      | Next.js 14, React Flow, Zustand, Tailwind CSS, Lucide |
-| **Backend**       | FastAPI (Python 3.11+), SQLAlchemy, Pydantic          |
-| **Database**      | SQLite (Default for MVP) / PostgreSQL (Ready)         |
-| **Worker Engine** | Celery, Redis                                         |
-| **AI Processing** | OpenAI (Planning), HuggingFace (Inference)            |
+| Component         | Technology                                                               |
+| ----------------- | ------------------------------------------------------------------------ |
+| **Frontend**      | Next.js 14, React Flow, Zustand, Tailwind CSS, Lucide                    |
+| **Backend**       | FastAPI (Python 3.11+), SQLAlchemy, Pydantic                             |
+| **Database**      | SQLite (Default for MVP) / PostgreSQL (Ready)                            |
+| **Worker Engine** | Celery, Redis                                                            |
+| **AI Processing** | Groq `llama-3.3-70b-versatile` (Planning), DAG validation + Dagre layout |
 
 ---
 
@@ -49,6 +49,10 @@ cd apps/api
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Set your Groq API key in apps/api/.env
+# Get a free key at https://console.groq.com
+# GROQ_API_KEY=gsk_...
 
 # Run migrations (Ensures DB schema is up-to-date)
 alembic upgrade head
@@ -100,14 +104,15 @@ Workline-AI/
 
 ---
 
-## 🛠️ Current Status (v0.1.0-alpha)
+## 🛠️ Current Status (v0.2.0-alpha)
 - [x] Multi-tenant DB Foundation (Organisations, Users, Workflows)
 - [x] Alembic Migration System
 - [x] Backend Seeding & Idempotency
 - [x] Frontend Scaffolding (Next.js 14)
 - [x] Core Dependency Integration (React Flow, Zustand)
 - [x] Full Stack Docker-Compose (Postgres, Redis, MinIO)
-- [/] Natural Language Graph Generation (In Progress)
+- [x] **Real LLM Graph Generation** — Groq `llama-3.3-70b-versatile` via `POST /plan` (J1)
+- [x] **Conversation History** — Persistent chat turns with `GET /conversations/{id}` (J1)
 - [/] Multi-Domain Block Library (In Progress)
 - [ ] Multi-user RBAC (Planned)
 - [ ] Version Rollbacks (Planned)

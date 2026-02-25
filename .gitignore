@@ -11,15 +11,22 @@ dist/
 
 # Python
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 venv/
 env/
 .env
+.env.local
+.env.*.local
 
 # Database
 *.db
+*.sqlite
 *.sqlite3
+
+# Turborepo
+.turbo/
 
 # Logs
 *.log

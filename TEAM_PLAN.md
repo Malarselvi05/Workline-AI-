@@ -19,20 +19,22 @@
 
 ---
 
-## Shared Setup (Do This Together First — ~1 day)
+## Shared Setup (Do This Together First — ~1 day) [x]
 
 These decisions must be made and committed before either member starts Phase 1:
 
-- [ ] Agree on and create `packages/shared-types/` with:
-  - `block_registry.py` (Pydantic) + `block_registry.ts` (TypeScript) — single list of all block types, their input/output types, config schemas
-  - `api_schemas.py` / `api_schemas.ts` — shared request/response shapes for every endpoint
-- [ ] Set up Turborepo: create `turbo.json` and `package.json` at root
-- [ ] Scaffold Next.js 14 (App Router + Tailwind + ShadCN) in `apps/web/` — just the blank project, no feature code
-- [ ] Restructure `apps/api/` folders to: `routers/` · `services/` · `ai/` · `db/` · `auth/`
-- [ ] Replace `create_all()` with **Alembic**: `alembic init apps/api/alembic`, create initial migration
-- [ ] Create `infra/docker-compose.yml` with: FastAPI + PostgreSQL 16 + Redis 7 + MinIO
-- [ ] Create `.env.example` files for both `apps/api` and `apps/web`
-- [ ] Agree on branch naming: `feature/J-<name>` and `feature/M-<name>`, merge via PR
+- [x] Agree on and create `packages/shared-types/` with:
+  - [x] `block_registry.py` (Pydantic) + `block_registry.ts` (TypeScript) — 21 block types with input/output types, config schemas, icons
+  - [x] `api_schemas.py` / `api_schemas.ts` — shared request/response shapes for every endpoint
+  - [x] `package.json` — `@workline/shared-types` package manifest
+- [x] Set up Turborepo: `turbo.json` and root `package.json` with `workspaces: ["apps/*", "packages/*"]`
+- [x] Scaffold Next.js 14 (App Router + Tailwind + ShadCN) in `apps/web/` — already done
+- [x] Restructure `apps/api/` folders to: `routers/` · `services/` · `ai/` · `db/` · `auth/` — already done
+- [x] Replace `create_all()` with **Alembic** — already done
+- [x] Create `infra/docker-compose.yml` with: FastAPI + PostgreSQL 16 + Redis 7 + MinIO — already done
+- [x] Create `.env.example` files for both `apps/api` and `apps/web`
+- [x] Agree on branch naming: `feature/J-<name>` and `feature/M-<name>`, merge via PR
+
 
 ---
 
@@ -46,23 +48,23 @@ These decisions must be made and committed before either member starts Phase 1:
 
 > J owns everything for the Canvas and Chatbot features: DB tables for conversations, the planner API + real LLM, the React Flow canvas, and the chatbot panel UI.
 
-#### J1 — Conversation & Planning Backend
-- [ ] Add `conversations` table to DB (id, org_id, workflow_id, created_at)
-- [ ] Add `conversation_turns` table (id, conversation_id, role, content, proposal_json, created_at)
-- [ ] Create Alembic migration for both tables
-- [ ] Create `ai/planner.py` — real LLM planner:
-  - Install `litellm` — **never call OpenAI SDK directly, always use LiteLLM**
-  - Assemble 4-layer prompt: system persona + block registry snapshot + domain context + user goal + last 8 turns
-  - Call LiteLLM: GPT-4.1 primary, Mistral Large fallback on rate limit/error (temperature 0.2, JSON mode)
-  - Validate response server-side: all block types must exist in `block_registry`, topological sort must succeed
-  - On validation failure: retry once with error description appended
-  - Apply Dagre layout algorithm to compute `position_x` / `position_y` for each proposed node
-  - Save conversation turn to DB
-- [ ] Create `routers/planning.py`:
-  - `POST /plan` — accepts `{ goal, workspace_id, conversation_id? }`, returns `WorkflowProposal`
-  - `GET /conversations/{id}` — return full conversation history (restored on page reload)
-- [ ] Add `reasoning` (Text) column to `workflow_nodes` — stores AI justification per block
-- [ ] Delete `services/planner.py` (the old keyword mock)
+#### J1 — Conversation & Planning Backend [x]
+- [x] Add `conversations` table to DB (id, org_id, workflow_id, created_at)
+- [x] Add `conversation_turns` table (id, conversation_id, role, content, proposal_json, created_at)
+- [x] Create Alembic migration for both tables (`0e785d094cbd_add_conversations_and_conversation_turns.py`)
+- [x] Create `ai/planner.py` — real LLM planner (Groq llama-3.3-70b-versatile):
+  - [x] Install `groq` SDK (replaces `openai`)
+  - [x] Assemble 4-layer prompt: system persona + block registry snapshot + domain context + user goal + last 8 turns
+  - [x] Call Groq: llama-3.3-70b-versatile (temperature 0.2, JSON mode)
+  - [x] Validate response server-side: all block types must exist in `block_registry`, topological sort must succeed
+  - [x] On validation failure: retry once with error description appended
+  - [x] Apply Dagre-style layout algorithm to compute `position_x` / `position_y` for each proposed node
+  - [x] Save conversation turn to DB
+- [x] Create `routers/planning.py`:
+  - [x] `POST /plan` — accepts `{ goal, conversation_id? }`, returns `WorkflowProposal`
+  - [x] `GET /conversations/{id}` — return full conversation history (restored on page reload)
+- [x] `reasoning` (Text) column already exists in `workflow_nodes`
+- [x] Delete `services/planner.py` (the old keyword mock)
 
 #### J2 — Canvas UI (Frontend)
 - [ ] Set up React Flow canvas with background grid, minimap, controls

@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from app.schemas.workflow import WorkflowCreate, WorkflowResponse, WorkflowDetailResponse, NodeSchema, EdgeSchema, WorkflowBase
 from typing import List, Optional
 from app.auth.dependencies import get_current_active_user, require_viewer, require_editor
+from app.db.session import get_db
+from app.models import models
 import logging
 
 logger = logging.getLogger(__name__)

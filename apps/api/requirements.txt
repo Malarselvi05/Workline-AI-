@@ -11,6 +11,6 @@ celery
 redis
 websockets
 httpx
-openai
+groq
 python-dotenv
 alembic
