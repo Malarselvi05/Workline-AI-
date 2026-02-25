@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   db:
-    image: postgres:15
+    image: postgres:16
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
@@ -17,6 +17,18 @@ services:
     ports:
       - "6379:6379"
 
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+
   api:
     build: 
       context: ../../
@@ -26,21 +38,30 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/workline
       - REDIS_URL=redis://redis:6379/0
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
     depends_on:
       - db
       - redis
+      - minio
 
   worker:
     build:
       context: ../../
       dockerfile: apps/api/Dockerfile
-    command: celery -A app.core.tasks worker --loglevel=info
+    command: celery -A app.core.celery_app.celery_app worker --loglevel=info
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/workline
       - REDIS_URL=redis://redis:6379/0
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
     depends_on:
       - db
       - redis
+      - minio
 
 volumes:
   postgres_data:
+  minio_data:

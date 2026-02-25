@@ -50,6 +50,9 @@ cd apps/api
 # Install dependencies
 pip install -r requirements.txt
 
+# Run migrations (Ensures DB schema is up-to-date)
+alembic upgrade head
+
 # Initialize the database (Seeds demo workflows)
 python app/seed.py
 
@@ -98,10 +101,12 @@ Workline-AI/
 ---
 
 ## 🛠️ Current Status (v0.1.0-alpha)
+- [x] Multi-tenant DB Foundation (Organisations, Users, Workflows)
+- [x] Alembic Migration System
 - [x] Backend Seeding & Idempotency
 - [x] Frontend Scaffolding (Next.js 14)
 - [x] Core Dependency Integration (React Flow, Zustand)
-- [x] SQLite/Synchronous Fallback
+- [x] Full Stack Docker-Compose (Postgres, Redis, MinIO)
 - [/] Natural Language Graph Generation (In Progress)
 - [/] Multi-Domain Block Library (In Progress)
 - [ ] Multi-user RBAC (Planned)

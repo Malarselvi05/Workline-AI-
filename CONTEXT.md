@@ -92,10 +92,16 @@ Workline-AI/
 | `WebSocket /ws/status/{id}` → live status                                                         | `main.py`                              | ⚠️ Stub (echo only)                      |
 | Celery task for async workflow execution                                                          | `core/tasks.py` + `core/celery_app.py` | ✅ Done                                  |
 | Sync fallback if Celery/Redis not running                                                         | `main.py`                              | ✅ Done                                  |
-| DB Models: User, Workflow, WorkflowNode, WorkflowEdge, WorkflowRun, File, ModelMetadata, AuditLog | `models/models.py`                     | ✅ All defined                           |
+| DB Models: User, Workflow, WorkflowNode, WorkflowEdge, WorkflowRun, File, ModelMetadata, AuditLog, Organisation, RunNodeState, DriftAlert | `models/models.py` | ✅ All updated for M1 |
 | SQLite dev database                                                                               | `db/session.py` + `workline.db`        | ✅ Done                                  |
-| DB Seeder with demo workflow                                                                      | `seed.py`                              | ✅ Done, handles duplicate seeds         |
-| Docker image for API                                                                              | `Dockerfile`                           | ✅ Done                                  |
+| DB Seeder with demo workflow, organisations and reasoning                                         | `seed.py`                              | ✅ Done, handles multi-tenancy           |
+| Docker-Compose stack (API, Postgres, Redis, MinIO)                                                | `infra/docker/docker-compose.yml`      | ✅ Done                                  |
+| Alembic Migration System                                                                          | `alembic/`, `alembic.ini`              | ✅ Done                                  |
+| SQLAlchemy Multi-tenancy listener                                                                 | `db/session.py`                        | ✅ Done                                  |
+| JWT Auth (Login/Refresh/Logout)                                                                   | `auth/jwt.py` + `routers/auth.py`      | ✅ Done                                  |
+| RBAC Dependencies (Admin/Editor/Viewer)                                                           | `auth/dependencies.py`                 | ✅ Done                                  |
+| Next.js Auth Middleware + Interceptors                                                            | `middleware.ts` + `lib/api.ts`         | ✅ Done                                  |
+| UI Login Page + Auth State                                                                        | `app/login/` + `store/useAuthStore.ts` | ✅ Done                                  |
 
 ### Workflow Engine (`packages/workflow_engine`)
 
@@ -244,14 +250,17 @@ All tables created via `models.Base.metadata.create_all()` on startup:
 
 | Table            | Key Columns                                            | Notes                                      |
 | ---------------- | ------------------------------------------------------ | ------------------------------------------ |
-| `users`          | id, name, email, role, created_at                      | Auth not wired yet                         |
-| `workflows`      | id, name, description, status, version, created_by     | `status`: draft/active/archived            |
-| `workflow_nodes` | id (str), workflow_id, type, config_json, position_x/y | Uses React Flow string IDs                 |
-| `workflow_edges` | id (str), workflow_id, source_node_id, target_node_id  |                                            |
-| `workflow_runs`  | id, workflow_id, status, started_at, ended_at, logs    | `status`: pending/running/completed/failed |
-| `files`          | id, workflow_id, path, hash, metadata_json             | File storage tracking                      |
+| `organisations`  | id, name, plan, created_at                             | ✅ New Table (Multi-tenancy root)          |
+| `users`          | id, org_id, name, email, role, created_at              | ✅ FK to organisations added               |
+| `workflows`      | id, org_id, name, description, status, version, parent_version_id, created_by | ✅ Multi-tenancy + Versioning added |
+| `workflow_nodes` | id (str), workflow_id, type, config_json, position_x/y, reasoning | ✅ reasoning column added             |
+| `workflow_edges` | id (str), workflow_id, source_node_id, target_node_id, edge_type | ✅ edge_type added                  |
+| `workflow_runs`  | id, workflow_id, status, started_at, ended_at, logs    | ✅ awaiting_review status added            |
+| `run_node_states`| id, run_id, node_id, status, started_at, ended_at, output_json, error | ✅ New Table (detailed run tracking) |
+| `files`          | id, org_id, workflow_id, path, hash, metadata_json     | ✅ FK to organisations added               |
 | `models`         | id, name, type, version, metrics_json                  | AI model registry                          |
-| `audit_logs`     | id, user_id, action, entity_type, entity_id, timestamp | Not populated yet                          |
+| `audit_logs`     | id, org_id, user_id, action, entity_type, entity_id, timestamp | ✅ FK back to orgs + append-only logic |
+| `drift_alerts`   | id, workflow_id, metric, baseline_val, current_val, resolved | ✅ New Table (Drift monitoring)       |
 
 ---
 

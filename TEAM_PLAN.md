@@ -117,37 +117,37 @@ These decisions must be made and committed before either member starts Phase 1:
 
 > M owns everything for the platform foundation: infrastructure, auth system, workflow CRUD, the DAG engine, block library, and real-time execution status.
 
-#### M1 — Infrastructure & DB Foundation
-- [ ] Finalize and migrate all DB tables via Alembic:
-  - Add `organisations` — id, name, plan, created_at
-  - Add `org_id` FK to: `users`, `workflows`, `files`, `audit_logs`
-  - Add `parent_version_id` (self-ref FK) to `workflows` (rollback chain)
-  - Add `edge_type` to `workflow_edges` (default / condition_true / condition_false)
-  - Add `run_node_states` table — id, run_id, node_id, status, started_at, ended_at, output_json, error
-  - Add `drift_alerts` table — id, workflow_id, metric, baseline_val, current_val, resolved
-  - Make `audit_logs` append-only: Alembic migration that runs `REVOKE UPDATE DELETE ON audit_logs`
-- [ ] SQLAlchemy event listener that auto-appends `org_id` filter to ALL queries (multi-tenancy enforced at ORM layer)
-- [ ] Seed script: create default org + admin user (safe to re-run)
-- [ ] Verify `infra/docker-compose.yml` works: `docker-compose up` brings up API + PostgreSQL + Redis + MinIO
+#### M1 — Infrastructure & DB Foundation [x]
+- [x] Finalize and migrate all DB tables via Alembic:
+  - [x] Add `organisations` — id, name, plan, created_at
+  - [x] Add `org_id` FK to: `users`, `workflows`, `files`, `audit_logs`
+  - [x] Add `parent_version_id` (self-ref FK) to `workflows` (rollback chain)
+  - [x] Add `edge_type` to `workflow_edges` (default / condition_true / condition_false)
+  - [x] Add `run_node_states` table — id, run_id, node_id, status, started_at, ended_at, output_json, error
+  - [x] Add `drift_alerts` table — id, workflow_id, metric, baseline_val, current_val, resolved
+  - [x] Make `audit_logs` append-only: Alembic migration that runs `REVOKE UPDATE DELETE ON audit_logs`
+- [x] SQLAlchemy event listener that auto-appends `org_id` filter to ALL queries (multi-tenancy enforced at ORM layer)
+- [x] Seed script: create default org + admin user (safe to re-run)
+- [x] Verify `infra/docker-compose.yml` works: `docker-compose up` brings up API + PostgreSQL + Redis + MinIO
 
-#### M2 — Authentication & RBAC (Full-Stack)
-- [ ] Create `auth/jwt.py`: access token (15 min) + refresh token (7 days, HTTP-only cookie, rotated on every use)
-- [ ] Create `auth/dependencies.py`: FastAPI `Depends` for `require_admin`, `require_editor`, `require_viewer`
-- [ ] Create `routers/auth.py`:
-  - `POST /auth/login` → returns access + refresh tokens
-  - `POST /auth/refresh` → rotates refresh token
-  - `POST /auth/logout` → invalidates refresh token
-- [ ] Wire RBAC on all routes (J's routes too — agree on which role each route requires)
-- [ ] Create login page (`app/login/page.tsx`): email + password form, stores tokens
-- [ ] Token refresh interceptor in `lib/api.ts`: auto-refresh on 401 response
-- [ ] Auth middleware (`middleware.ts`): redirect unauthenticated users to `/login`
-- [ ] Role-based UI hiding: viewer cannot see Edit/Deploy buttons
+#### M2 — Authentication & RBAC (Full-Stack) [x]
+- [x] Create `auth/jwt.py`: access token (15 min) + refresh token (7 days, HTTP-only cookie, rotated on every use)
+- [x] Create `auth/dependencies.py`: FastAPI `Depends` for `require_admin`, `require_editor`, `require_viewer`
+- [x] Create `routers/auth.py`:
+  - [x] `POST /auth/login` → returns access + refresh tokens
+  - [x] `POST /auth/refresh` → rotates refresh token
+  - [x] `POST /auth/logout` → invalidates refresh token
+- [x] Wire RBAC on all routes (J's routes too — agree on which role each route requires)
+- [x] Create login page (`app/login/page.tsx`): email + password form, stores tokens
+- [x] Token refresh interceptor in `lib/api.ts`: auto-refresh on 401 response
+- [x] Auth middleware (`middleware.ts`): redirect unauthenticated users to `/login`
+- [x] Role-based UI hiding: viewer cannot see Edit/Deploy buttons
 
-#### M3 — Workflow CRUD API
-- [ ] Move route handlers from `main.py` → `routers/workflows.py`
-- [ ] Add/fix endpoints:
-  - `GET /workflows/{id}` — returns workflow with nodes + edges
-  - `POST /workflows/{id}/deploy` — status=active, archives old version, writes audit log entry
+#### M3 — Workflow CRUD API [x]
+- [x] Move route handlers from `main.py` → `routers/workflows.py`
+- [x] Add/fix endpoints:
+  - [x] `GET /workflows/{id}` — returns workflow with nodes + edges
+  - [x] `POST /workflows/{id}/deploy` — status=active, archives old version, writes audit log entry
   - `POST /workflows/{id}/rollback/{version_id}` — restores nodes/edges from that version as a new version
   - `PATCH /workflows/{id}` — update name/description
   - `DELETE /workflows/{id}` — soft-delete (status=archived)
