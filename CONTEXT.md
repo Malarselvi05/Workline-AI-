@@ -36,11 +36,13 @@ Workline-AI/
 │   │   │   ├── routers/
 │   │   │   │   ├── auth.py         ✅ POST /auth/login, /auth/register
 │   │   │   │   ├── workflows.py    ✅ Full workflow CRUD + deploy + run + rollback + runs
-│   │   │   │   └── planning.py     ✅ POST /plan + GET /conversations/{id} [J1]
+│   │   │   │   ├── planning.py     ✅ POST /plan + GET /conversations/{id} [J1]
+│   │   │   │   └── blocks.py       ✅ GET /blocks, GET /blocks/{type} [M3]
 │   │   │   ├── schemas/
 │   │   │   │   ├── auth.py         ✅ Login / token Pydantic schemas
 │   │   │   │   └── workflow.py     ✅ Detailed workflow request/response schemas
-│   │   │   └── services/           (empty — planner.py mock deleted in J1)
+│   │   │   └── services/
+│   │   │   │   └── audit.py    ✅ log_action helper (wired to all CRUD) [M3]
 │   │   ├── alembic/            ✅ Migration system
 │   │   │   └── versions/       ✅ 3 migrations applied (initial, password, conversations)
 │   │   ├── .env                ✅ Dev env vars (GROQ_API_KEY, DATABASE_URL, REDIS_URL) [J1]
@@ -131,7 +133,14 @@ Workline-AI/
 | `POST /workflows/{id}/run`                   | `routers/workflows.py` + `core/tasks.py` | ✅ Done (Celery)                          |
 | `GET /workflows/{id}/runs`                   | `routers/workflows.py`                   | ✅ Done                                   |
 | `POST /workflows/{id}/rollback/{version_id}` | `routers/workflows.py`                   | ✅ Done                                   |
-| `WS /ws/status/{workflow_id}`                | `main.py`                                | ✅ Done                                   |
+| `WS /ws/runs/{run_id}`                       | `routers/ws.py`                          | ✅ Done [M4]                              |
+| `POST /workflows/{id}/runs`                  | `routers/runs.py`                        | ✅ Done [M4]                              |
+| `GET /workflows/{id}/runs`                   | `routers/runs.py`                        | ✅ Done [M4]                              |
+| `GET /runs/{id}`                             | `routers/runs.py`                        | ✅ Done [M4]                              |
+| `DELETE /runs/{id}/cancel`                   | `routers/runs.py`                        | ✅ Done [M4]                              |
+| `WS /ws/workspace/{org_id}`                  | `routers/ws.py`                          | ✅ Done [M4]                              |
+| `GET /blocks`                               | `routers/blocks.py`                      | ✅ Done [M3]                              |
+| `GET /blocks/{block_type}`                  | `routers/blocks.py`                      | ✅ Done [M3]                              |
 
 ---
 

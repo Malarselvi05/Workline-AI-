@@ -2,11 +2,15 @@ import os
 import sys
 
 # Add the project root to sys.path
-root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-packages_dir = os.path.abspath(os.path.join(root_dir, 'workline-ai', 'packages'))
+# __file__ is apps/api/app/core/celery_app.py
+# parent 3 levels up is apps/api
+# parent 4 levels up is workspace root (workline-ai)
+api_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+root_dir = os.path.abspath(os.path.join(api_dir, '..'))
+packages_dir = os.path.abspath(os.path.join(root_dir, 'packages'))
 
-if root_dir not in sys.path:
-    sys.path.append(root_dir)
+if api_dir not in sys.path:
+    sys.path.append(api_dir)
 if packages_dir not in sys.path:
     sys.path.append(packages_dir)
 

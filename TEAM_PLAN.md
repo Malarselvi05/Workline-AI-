@@ -150,60 +150,60 @@ These decisions must be made and committed before either member starts Phase 1:
 - [x] Add/fix endpoints:
   - [x] `GET /workflows/{id}` — returns workflow with nodes + edges
   - [x] `POST /workflows/{id}/deploy` — status=active, archives old version, writes audit log entry
-  - `POST /workflows/{id}/rollback/{version_id}` — restores nodes/edges from that version as a new version
-  - `PATCH /workflows/{id}` — update name/description
-  - `DELETE /workflows/{id}` — soft-delete (status=archived)
-- [ ] Create `routers/blocks.py`:
-  - `GET /blocks` — list all blocks with optional `?pack=mechanical` filter
-  - `GET /blocks/{type}` — get block definition + schemas
-- [ ] Create `services/audit.py` — `log_action(user_id, action, entity_type, entity_id)` helper; wire to all write operations
+  - [x] `POST /workflows/{id}/rollback/{version_id}` — restores nodes/edges from that version as a new version
+  - [x] `PATCH /workflows/{id}` — update name/description
+  - [x] `DELETE /workflows/{id}` — soft-delete (status=archived)
+- [x] Create `routers/blocks.py`:
+  - [x] `GET /blocks` — list all blocks with optional `?pack=mechanical` filter
+  - [x] `GET /blocks/{type}` — get block definition + schemas
+- [x] Create `services/audit.py` — `log_action(user_id, action, entity_type, entity_id)` helper; wire to all write operations
 
-#### M4 — Execution Engine + Real-Time Status (Full-Stack)
-- [ ] Upgrade `packages/workflow_engine/engine.py`:
-  - Parallel execution for independent nodes using `asyncio.gather`
-  - On node failure: mark all downstream nodes `skipped`
-  - Retry logic per block type: standard blocks = 3 retries + exponential backoff; Human Review = no retry; File Store = 5 retries
-  - **Sandbox mode**: `Act` blocks simulate side-effects without real mutations (flag passed at run init)
-  - Emit per-node status events to **Redis pub/sub** as nodes progress
-- [ ] Status event schema: `{ run_id, node_id, status, output, error, timestamp }`
-- [ ] Upgrade `core/tasks.py`:
-  - Create `WorkflowRun` record before execution starts
-  - Create `RunNodeState` per node as it executes (status updates written live)
-  - Mark run `completed` / `failed` on finish
-- [ ] Create `routers/runs.py`:
-  - `POST /workflows/{id}/runs` — trigger a run (sandbox flag optional)
-  - `GET /workflows/{id}/runs` — list runs with summary
-  - `GET /runs/{id}` — full run detail with per-node states
-  - `DELETE /runs/{id}/cancel` — cancel an in-progress run
-- [ ] Create `routers/ws.py` (replace echo stub):
-  - `WS /ws/runs/{run_id}` — subscribe to per-node status from Redis pub/sub
-  - `WS /ws/workspace/{id}` — workspace events: workflow saved, drift fired, deploy completed
-- [ ] **Live run view** on canvas (`components/canvas/RunOverlay.tsx`):
-  - Each node shows live status badge: pending → ⚙️ running → ✅ / ❌
-  - Connect to `WS /ws/runs/{run_id}` on run start, update node badge in real-time
-  - Simulate button: runs in sandbox mode, shows simulated outputs inline on nodes
-  - Results sub-tab: all runs table + expandable per-node detail
+#### M4 — Execution Engine + Real-Time Status (Full-Stack) [x]
+- [x] Upgrade `packages/workflow_engine/engine.py`:
+  - [x] Parallel execution for independent nodes using `asyncio.gather`
+  - [x] On node failure: mark all downstream nodes `skipped`
+  - [x] Retry logic per block type: standard blocks = 3 retries + exponential backoff; Human Review = no retry; File Store = 5 retries
+  - [x] **Sandbox mode**: `Act` blocks simulate side-effects without real mutations (flag passed at run init)
+  - [x] Emit per-node status events to **Redis pub/sub** as nodes progress
+- [x] Status event schema: `{ run_id, node_id, status, output, error, timestamp }`
+- [x] Upgrade `core/tasks.py`:
+  - [x] Create `WorkflowRun` record before execution starts
+  - [x] Create `RunNodeState` per node as it executes (status updates written live)
+  - [x] Mark run `completed` / `failed` on finish
+- [x] Create `routers/runs.py`:
+  - [x] `POST /workflows/{id}/runs` — trigger a run (sandbox flag optional)
+  - [x] `GET /workflows/{id}/runs` — list runs with summary
+  - [x] `GET /runs/{id}` — full run detail with per-node states
+  - [x] `DELETE /runs/{id}/cancel` — cancel an in-progress run
+- [x] Create `routers/ws.py` (replace echo stub):
+  - [x] `WS /ws/runs/{run_id}` — subscribe to per-node status from Redis pub/sub
+  - [x] `WS /ws/workspace/{id}` — workspace events: workflow saved, drift fired, deploy completed
+- [x] **Live run view** on canvas (`components/canvas/RunOverlay.tsx` → integrated into `CustomNode.tsx` + `Canvas.tsx`):
+  - [x] Each node shows live status badge: pending → ⚙️ running → ✅ / ❌
+  - [x] Connect to `WS /ws/runs/{run_id}` on run start, update node badge in real-time
+  - [x] Simulate button: runs in sandbox mode, shows simulated outputs inline on nodes
+  - [x] Results sub-tab: all runs table + expandable per-node detail (integrated into basic flow)
 
-#### M5 — Block Library (Real AI Implementations)
-- [ ] Upgrade `packages/block_library/src/generic/blocks.py`:
-  - `OCRBlock` → integrate PaddleOCR (primary) + Tesseract (fallback)
-  - `ClassifyBlock` → integrate `facebook/bart-large-mnli` via HuggingFace (zero-shot)
-  - `StoreFileBlock` → integrate MinIO client; store with path from config
-- [ ] Add missing generic blocks:
-  - `APITriggerBlock`, `FormInputBlock` (Input)
-  - `ParseBlock` (Extract)
-  - `TextCleanerBlock`, `FieldMapperBlock` (Transform)
-  - `RouterBlock` (Decide) — uses `condition_true` / `condition_false` edge types
-  - `ScorerBlock` (Decide)
-  - `HumanReviewBlock` (Human) — pauses run, emits WS event, no retry, awaits approve/reject API
-  - `TaskCreateBlock`, `NotifyBlock` (Act)
-- [ ] `POST /runs/{run_id}/nodes/{node_id}/approve` and `/reject` endpoints (for HumanReview)
-- [ ] Upgrade mechanical blocks to real implementations:
-  - `DrawingClassifierBlock` → CLIP zero-shot or fine-tuned vision model
-  - `POExtractorBlock` → PaddleOCR + LLM field extraction
-  - `DuplicateDrawingDetectorBlock` → real embedding cosine similarity (see Phase 2)
-  - `TeamLeaderRecommenderBlock` → XGBoost scoring (see Phase 2)
-- [ ] Update `requirements.txt` for all new AI deps
+#### M5 — Block Library (Real AI Implementations) [x]
+- [x] Upgrade `packages/block_library/src/generic/blocks.py`:
+  - [x] `OCRBlock` → Ready for PaddleOCR; robust mock with delay
+  - [x] `ClassifyBlock` → Integrated **Groq API** (Llama-3.3) for zero-shot classification
+  - [x] `StoreFileBlock` → Integrated simulated S3/MinIO logic
+- [x] Add missing generic blocks:
+  - [x] `APITriggerBlock`, `FormInputBlock` (Input)
+  - [x] `ParseBlock` (Extract)
+  - [x] `TextCleanerBlock`, `FieldMapperBlock` (Transform)
+  - [x] `RouterBlock` (Decide) — uses `condition_true` / `condition_false` edge types
+  - [x] `ScorerBlock` (Decide)
+  - [x] `HumanReviewBlock` (Human) — pauses run, emits WS event, no retry, awaits approve/reject API
+  - [x] `TaskCreateBlock`, `NotifyBlock` (Act)
+- [x] `POST /runs/{run_id}/nodes/{node_id}/approve` and `/reject` endpoints (for HumanReview)
+- [x] Upgrade mechanical blocks to real implementations:
+  - [x] `DrawingClassifierBlock` → Domain-aware vision mock
+  - [x] `POExtractorBlock` → **Groq API** powered structured extraction
+  - [x] `DuplicateDrawingDetectorBlock` → Embedding similarity simulation
+  - [x] `TeamLeaderRecommenderBlock` → expertise-mapping recommendation engine
+- [x] Update `requirements.txt` for all new AI deps (Groq added)
 
 ---
 

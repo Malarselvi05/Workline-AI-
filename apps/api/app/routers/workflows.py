@@ -5,6 +5,7 @@ from typing import List, Optional
 from app.auth.dependencies import get_current_active_user, require_viewer, require_editor
 from app.db.session import get_db
 from app.models import models
+from app.services.audit import log_action
 import logging
 
 logger = logging.getLogger(__name__)
@@ -53,14 +54,14 @@ async def create_workflow(
         )
         db.add(edge)
         
-    audit_log = models.AuditLog(
+    log_action(
+        db=db,
         org_id=current_user.org_id,
         user_id=current_user.id,
         action="CREATE",
         entity_type="WORKFLOW",
         entity_id=new_workflow.id
     )
-    db.add(audit_log)
     
     db.commit()
     db.refresh(new_workflow)
@@ -132,14 +133,14 @@ async def deploy_workflow(
     
     workflow.status = "active"
     
-    audit_log = models.AuditLog(
+    log_action(
+        db=db,
         org_id=current_user.org_id,
         user_id=current_user.id,
         action="DEPLOY",
         entity_type="WORKFLOW",
         entity_id=workflow.id
     )
-    db.add(audit_log)
     
     db.commit()
     db.refresh(workflow)
@@ -159,14 +160,14 @@ async def update_workflow(
     workflow.name = workflow_data.name
     workflow.description = workflow_data.description
     
-    audit_log = models.AuditLog(
+    log_action(
+        db=db,
         org_id=current_user.org_id,
         user_id=current_user.id,
         action="UPDATE",
         entity_type="WORKFLOW",
         entity_id=workflow.id
     )
-    db.add(audit_log)
     
     db.commit()
     db.refresh(workflow)
@@ -184,14 +185,14 @@ async def delete_workflow(
     
     workflow.status = "archived"
     
-    audit_log = models.AuditLog(
+    log_action(
+        db=db,
         org_id=current_user.org_id,
         user_id=current_user.id,
         action="DELETE",
         entity_type="WORKFLOW",
         entity_id=workflow.id
     )
-    db.add(audit_log)
     
     db.commit()
     db.refresh(workflow)
@@ -252,14 +253,14 @@ async def rollback_workflow(
         )
         db.add(new_edge)
         
-    audit_log = models.AuditLog(
+    log_action(
+        db=db,
         org_id=current_user.org_id,
         user_id=current_user.id,
         action="ROLLBACK",
         entity_type="WORKFLOW",
         entity_id=new_version.id
     )
-    db.add(audit_log)
     
     db.commit()
     db.refresh(new_version)

@@ -26,7 +26,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from app.routers import auth, workflows, planning
+from app.routers import auth, workflows, planning, blocks, runs, ws
 
 app = FastAPI(
     title="WorkLine AI API",
@@ -48,20 +48,14 @@ Base.metadata.create_all(bind=engine)
 app.include_router(auth.router)
 app.include_router(workflows.router)
 app.include_router(planning.router)
+app.include_router(blocks.router)
+app.include_router(runs.router)
+app.include_router(ws.router)
 
 
 @app.get("/")
 async def root():
     return {"message": "WorkLine AI API is running", "version": "0.2.0", "docs": "/docs"}
-
-
-@app.websocket("/ws/status/{workflow_id}")
-async def websocket_endpoint(websocket: WebSocket, workflow_id: int):
-    await websocket.accept()
-    await websocket.send_json({"status": "connected", "workflow_id": workflow_id})
-    while True:
-        data = await websocket.receive_text()
-        await websocket.send_json({"echo": data})
 
 
 if __name__ == "__main__":
