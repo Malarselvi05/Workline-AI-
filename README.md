@@ -104,7 +104,7 @@ Workline-AI/
 
 ---
 
-## 🛠️ Current Status (v0.2.0-alpha)
+## 🛠️ Current Status (v0.3.0-alpha)
 - [x] Multi-tenant DB Foundation (Organisations, Users, Workflows)
 - [x] Alembic Migration System
 - [x] Backend Seeding & Idempotency
@@ -113,6 +113,8 @@ Workline-AI/
 - [x] Full Stack Docker-Compose (Postgres, Redis, MinIO)
 - [x] **Real LLM Graph Generation** — Groq `llama-3.3-70b-versatile` via `POST /plan` (J1)
 - [x] **Conversation History** — Persistent chat turns with `GET /conversations/{id}` (J1)
+- [x] **Canvas UI** — Undo/Redo, diff highlights, right-click menu, auto-layout (J2)
+- [x] **Chatbot Panel UI** — Reasoning accordion, file attach, conversation restore (J3)
+- [x] **Workflow Save/Deploy UI** — SaveModal, DeployModal, Rollback UI, Sidebar status badges (J4)
 - [/] Multi-Domain Block Library (In Progress)
 - [ ] Multi-user RBAC (Planned)
-- [ ] Version Rollbacks (Planned)

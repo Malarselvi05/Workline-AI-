@@ -1,7 +1,8 @@
 > **Purpose**: Running state-of-the-codebase document for both human devs and AI assistants.
 > **Rule**: Every time you make significant code changes, update the relevant section of this file.
 > **Team Plan**: See [`TEAM_PLAN.md`](./TEAM_PLAN.md) for the full phase-by-phase checklist for Member J and Member M.
-> **Last Updated**: 2026-02-25 (Shared Setup complete + J1 — Conversation & Planning Backend complete)
+> **Last Updated**: 2026-02-27 (J4 — Workflow Save / Deploy UI complete)
+
 
 ---
 
@@ -61,13 +62,19 @@ Workline-AI/
 │       │   └── workflow/[id]/page.tsx ✅ Workflow detail page
 │       ├── components/
 │       │   ├── canvas/
-│       │   │   ├── BlockPalette.tsx    ✅ Draggable block palette (by category)
-│       │   │   ├── Toolbar.tsx         ✅ Canvas toolbar (Save, Deploy, Undo, etc.)
-│       │   │   └── nodes/WorkflowNode.tsx ✅ React Flow custom node
+│       │   │   ├── BlockPalette.tsx    ✅ Searchable palette + Domain Pack toggle [J2]
+│       │   │   ├── DeployModal.tsx     ✅ Deploy confirmation modal + calls POST /deploy [J4]
+│       │   │   ├── SaveModal.tsx       ✅ Save name/description form + calls POST /workflows [J4]
+│       │   │   ├── Toolbar.tsx         ✅ Validate · Simulate · Undo/Redo · Auto-layout · Zoom-Fit · Save · Deploy [J2/J4]
+│       │   │   └── nodes/WorkflowNode.tsx ✅ Color-coded nodes + right-click ctx menu + diff highlights [J2]
 │       │   ├── chatbot/
-│       │   │   └── ChatPanel.tsx       ✅ AI chat input → calls /plan → loads canvas
+│       │   │   └── ChatPanel.tsx       ✅ Per-block reasoning accordion + file attach + conversation restore [J3]
 │       │   └── workspace/
-│       │       └── Sidebar.tsx         ✅ Navigation sidebar
+│       │       └── Sidebar.tsx         ✅ Status dots + Domain Pack link + badge-warning for draft [J4]
+│       ├── stores/
+│       │   ├── canvasStore.ts          ✅ undo/redo history · diff highlights · auto-layout · domain pack toggle [J2]
+│       │   ├── chatStore.ts            ✅ conversationId tracking · loadConversation() · POST /plan with conv_id [J3]
+│       │   └── workspaceStore.ts       ✅ workflows[] · activeWorkflowId · addWorkflowTab() · updateWorkflowStatus() · renameWorkflowTab() [J4]
 │       ├── lib/
 │       │   └── api.ts              ✅ Typed fetch wrappers (all endpoints, auth headers) [Shared Setup]
 │       ├── .env.example            ✅ NEXT_PUBLIC_API_URL, NEXT_PUBLIC_WS_URL [Shared Setup]
@@ -139,25 +146,29 @@ Workline-AI/
 | `GET /runs/{id}`                             | `routers/runs.py`                        | ✅ Done [M4]                              |
 | `DELETE /runs/{id}/cancel`                   | `routers/runs.py`                        | ✅ Done [M4]                              |
 | `WS /ws/workspace/{org_id}`                  | `routers/ws.py`                          | ✅ Done [M4]                              |
-| `GET /blocks`                               | `routers/blocks.py`                      | ✅ Done [M3]                              |
-| `GET /blocks/{block_type}`                  | `routers/blocks.py`                      | ✅ Done [M3]                              |
+| `GET /blocks`                                | `routers/blocks.py`                      | ✅ Done [M3]                              |
+| `GET /blocks/{block_type}`                   | `routers/blocks.py`                      | ✅ Done [M3]                              |
 
 ---
 
 ## 🖥️ Frontend Components
 
-| Component              | Path                                       | Status                               |
-| ---------------------- | ------------------------------------------ | ------------------------------------ |
-| Canvas split-view page | `app/automate/page.tsx`                    | ✅ Done                               |
-| Workflow detail page   | `app/workflow/[id]/page.tsx`               | ✅ Done                               |
-| Dashboard              | `app/dashboard/page.tsx`                   | ✅ Done (mock stats)                  |
-| Login stub             | `app/login/page.tsx`                       | ✅ Done                               |
-| ChatPanel (chatbot)    | `components/chatbot/ChatPanel.tsx`         | ✅ Done (calls `/plan`)               |
-| Sidebar                | `components/workspace/Sidebar.tsx`         | ✅ Done                               |
-| BlockPalette           | `components/canvas/BlockPalette.tsx`       | ✅ Done                               |
-| Toolbar                | `components/canvas/Toolbar.tsx`            | ✅ Done                               |
-| WorkflowNode           | `components/canvas/nodes/WorkflowNode.tsx` | ✅ Done                               |
-| API service layer      | `lib/api.ts`                               | ✅ Done (all endpoints, auth headers) |
+| Component              | Path                                 | Status                                                                         |
+| ---------------------- | ------------------------------------ | ------------------------------------------------------------------------------ |
+| Canvas split-view page | `app/automate/page.tsx`              | ✅ Done — Ctrl+Z/Y shortcuts, context menu suppression [J2]                     |
+| Workflow detail page   | `app/workflow/[id]/page.tsx`         | ✅ Done — real API fetch, Deploy button, Rollback UI in Settings tab [J4]       |
+| Dashboard              | `app/dashboard/page.tsx`             | ✅ Done (mock stats)                                                            |
+| Login stub             | `app/login/page.tsx`                 | ✅ Done                                                                         |
+| ChatPanel (chatbot)    | `components/chatbot/ChatPanel.tsx`   | ✅ Done — conv ID badge, History restore, per-block reasoning, file attach [J3] |
+| Sidebar                | `components/workspace/Sidebar.tsx`   | ✅ Done — status dots, Domain Pack link, badge-warning [J4]                     |
+| BlockPalette           | `components/canvas/BlockPalette.tsx` | ✅ Done — search + domain pack toggle [J2]                                      |
+| Toolbar                | `components/canvas/Toolbar.tsx`      | ✅ Done — Undo/Redo/Auto-layout/ZoomFit/Validate/Save(modal)/Deploy(modal) [J4] |
+| SaveModal              | `components/canvas/SaveModal.tsx`    | ✅ Done — name+description form, POST /workflows, auto-creates sidebar tab [J4] |
+| DeployModal            | `components/canvas/DeployModal.tsx`  | ✅ Done — confirmation dialog, POST /deploy, updates sidebar badge [J4]         |
+| canvasStore            | `stores/canvasStore.ts`              | ✅ Done — undo/redo, diff, auto-layout, domain pack [J2]                        |
+| chatStore              | `stores/chatStore.ts`                | ✅ Done — conversationId, loadConversation() [J3]                               |
+| workspaceStore         | `stores/workspaceStore.ts`           | ✅ Done — addWorkflowTab(), updateWorkflowStatus(), renameWorkflowTab() [J4]    |
+| API service layer      | `lib/api.ts`                         | ✅ Done (all endpoints, auth headers)                                           |
 
 ---
 
@@ -206,18 +217,17 @@ Workline-AI/
 - [ ] **Drift alerts**: no monitoring/alerting logic yet
 - [ ] **MinIO file storage**: routes exist but actual MinIO calls not wired
 
-### 🟡 Frontend (J2–J4 remaining)
-- [ ] **ChatPanel** → needs to call `POST /plan` with real `conversation_id` state
-- [ ] **canvasStore** → needs to import block types from `packages/shared-types/block_registry.ts`
-- [ ] **Dashboard** → mock data, not wired to real API
-- [ ] **WorkflowDetail** → partial, no save-to-DB flow
-- [ ] **Human review** → no UI for awaiting_review run state yet
+### 🟡 Frontend (J4 complete — Phase 2 remaining)
+- [ ] **Dashboard**: mock data, not wired to real API (J5)
+- [ ] **Human review**: no UI for awaiting_review run state yet (M6)
+- [ ] **WorkflowDetail versions**: rollback UI done; M7 must implement GET /workflows/{id}/versions for full history
 
-### 🟢 Shared Setup (all done ✅)
-- All `packages/shared-types/` files created
-- Turborepo root `package.json` + `turbo.json` created
-- `apps/web/.env.example` created
-- `lib/api.ts` fully updated with auth headers and all endpoints
+### 🟢 Done ✅
+- J1 — Conversation & Planning Backend (real Groq LLM)
+- J2 — Canvas UI: undo/redo, diff highlights, right-click menu, router dual-handles, auto-layout, domain pack toggle
+- J3 — Chatbot Panel UI: conversation_id tracking, loadConversation(), per-block reasoning accordion, file attach, timestamps, restore dialog
+- J4 — Workflow Save/Deploy UI: SaveModal (POST /workflows), DeployModal (POST /deploy), Rollback UI, Sidebar status dots + Domain Pack link, workspaceStore actions
+- Shared Setup: shared-types, Turborepo, env templates, api.ts
 
 ---
 

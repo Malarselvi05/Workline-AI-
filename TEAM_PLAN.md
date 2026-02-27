@@ -3,7 +3,8 @@
 > Each member owns a feature end-to-end: its database models, API routes, services, and UI.
 >
 > **Rule**: Mark tasks `[x]` when done. Update `CONTEXT.md` on every meaningful commit.
-> **Last Updated**: 2026-02-25
+> **Last Updated**: 2026-02-27 (J4 — Workflow Save / Deploy UI complete)
+
 
 ---
 
@@ -66,51 +67,51 @@ These decisions must be made and committed before either member starts Phase 1:
 - [x] `reasoning` (Text) column already exists in `workflow_nodes`
 - [x] Delete `services/planner.py` (the old keyword mock)
 
-#### J2 — Canvas UI (Frontend)
-- [ ] Set up React Flow canvas with background grid, minimap, controls
-- [ ] **Custom node types** in `components/canvas/nodes/`:
+#### J2 — Canvas UI (Frontend) [x]
+- [x] Set up React Flow canvas with background grid, minimap, controls
+- [x] **Custom node types** in `components/canvas/nodes/`:
   - Base `WorkflowNode` component: icon + label + status badge + input/output port handles
   - Specific renderers: `OcrNode`, `ClassifyNode`, `RouterNode`, `HumanReviewNode`, `StoreNode`, `NotifyNode`, `RecommenderNode`
   - Color-coded by category: Input=blue · Extract=purple · Transform=yellow · Decide=orange · AI=indigo · Human=red · Act=green
-- [ ] **Canvas toolbar** (`components/canvas/Toolbar.tsx`):
+- [x] **Canvas toolbar** (`components/canvas/Toolbar.tsx`):
   - Validate Flow · Simulate · Undo · Redo · Auto-layout · Zoom Fit
   - Validate: triggers validation, shows red badges on error nodes — does **not** run continuously
-- [ ] **Block palette** (`components/canvas/BlockPalette.tsx`):
+- [x] **Block palette** (`components/canvas/BlockPalette.tsx`):
   - Searchable by name, filterable by category
   - Domain pack blocks hidden behind a toggle (off by default)
   - Drag from palette → drop on canvas (React Flow `onDrop` + `onDragOver`), 20px grid snap
-- [ ] **Right-click context menu** on nodes: Configure · Duplicate · Delete · View Schema · View Reasoning
-- [ ] **Edge type validation**: reject incompatible connections with red indicator + tooltip
-- [ ] **Zustand canvas store** (`stores/canvasStore.ts`):
+- [x] **Right-click context menu** on nodes: Configure · Duplicate · Delete · View Schema · View Reasoning
+- [x] **Edge type validation**: reject incompatible connections with red indicator + tooltip
+- [x] **Zustand canvas store** (`stores/canvasStore.ts`):
   - `nodes[]`, `edges[]`, `setNodes`, `setEdges`
   - `importFromProposal(proposalNodes, proposalEdges)` — called by Apply to Canvas button
   - `highlightChanges(changedIds, newIds, removedIds)` — amber/blue/ghost diff highlight
 
-#### J3 — Chatbot Panel UI (Frontend)
-- [ ] Slide-in panel (380px wide) from right side of canvas
-- [ ] **Message thread** (`ChatThread.tsx`): restored from DB on reload (`GET /conversations/{id}`)
-- [ ] **Input field** (`ChatInput.tsx`): multi-line, Ctrl+Enter / Cmd+Enter to send, file attach button
-- [ ] **Proposal renderer** (`ProposalMessage.tsx`):
+#### J3 — Chatbot Panel UI (Frontend) [x]
+- [x] Slide-in panel (380px wide) from right side of canvas
+- [x] **Message thread** (`ChatThread.tsx`): restored from DB on reload (`GET /conversations/{id}`)
+- [x] **Input field** (`ChatInput.tsx`): multi-line, Ctrl+Enter / Cmd+Enter to send, file attach button
+- [x] **Proposal renderer** (`ProposalMessage.tsx`):
   - One-paragraph summary
   - Expandable **Reasoning accordion** — one entry per proposed block, why it was chosen
   - **Apply to Canvas** button — calls `canvasStore.importFromProposal()`, does NOT execute
-- [ ] **Diff view**: when AI modifies existing graph — changed=amber, new=blue, removed=ghost (user confirms delete)
-- [ ] **Zustand chat store** (`stores/chatStore.ts`):
+- [x] **Diff view**: when AI modifies existing graph — changed=amber, new=blue, removed=ghost (user confirms delete)
+- [x] **Zustand chat store** (`stores/chatStore.ts`):
   - `messages[]`, `isLoading`, `sendMessage(goal)` → calls `POST /plan`, appends response to thread
 
 #### J4 — Workflow Save / Deploy UI (Frontend + wires to M's API)
-- [ ] **Save button**: calls `POST /workflows` with current canvas nodes + edges
+- [x] **Save button**: calls `POST /workflows` with current canvas nodes + edges
   - On success: sidebar tab auto-creates, success toast shown
-- [ ] **Deploy button** (disabled when status ≠ draft): calls `POST /workflows/{id}/deploy`
+- [x] **Deploy button** (disabled when status ≠ draft): calls `POST /workflows/{id}/deploy`
   - Confirmation modal before deploying
   - On success: tab badge updates to "Active"
-- [ ] **Rollback UI** (in Settings sub-tab): version history list, "Rollback to this version" button
-- [ ] **Sidebar** (`components/workspace/Sidebar.tsx`):
+- [x] **Rollback UI** (in Settings sub-tab): version history list, "Rollback to this version" button
+- [x] **Sidebar** (`components/workspace/Sidebar.tsx`):
   - Top: Dashboard · Automate links
   - Middle: one tab per workflow (auto-created on save), each with sub-tabs: Input · Run · Results · Logs · Edit · Settings
   - Bottom: User profile · Org settings · Domain pack manager
   - Collapses to icon-only below 1024px
-- [ ] **Zustand workspace store** (`stores/workspaceStore.ts`):
+- [x] **Zustand workspace store** (`stores/workspaceStore.ts`):
   - `workflows[]`, `activeWorkflowId`, `addWorkflowTab()`, `renameWorkflowTab()`
 
 ---
