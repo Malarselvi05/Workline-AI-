@@ -1,20 +1,20 @@
 import sys
 import os
 
-# Get the directory of the current file
-current_dir = os.path.dirname(os.path.abspath(__file__))
-# MiniProject/workline-ai/apps/api/app -> apps/api
-api_dir = os.path.dirname(current_dir)
-# MiniProject/workline-ai/apps/api -> workline-ai
-workline_ai_dir = os.path.dirname(os.path.dirname(api_dir))
-# workline-ai -> packages
-packages_dir = os.path.join(workline_ai_dir, 'packages')
+# Resolve the monorepo root: apps/api/app -> apps/api -> apps -> Workline-AI/
+_app_dir   = os.path.dirname(os.path.abspath(__file__))   # …/apps/api/app
+_api_dir   = os.path.dirname(_app_dir)                     # …/apps/api
+_repo_root = os.path.dirname(os.path.dirname(_api_dir))   # …/Workline-AI
+_packages_dir = os.path.join(_repo_root, 'packages')       # …/Workline-AI/packages
 
-# Add paths to sys.path
-if api_dir not in sys.path:
-    sys.path.append(api_dir)
-if packages_dir not in sys.path:
-    sys.path.append(packages_dir)
+# sys.path priority:
+#   1. repo root  → enables: from packages.shared_types.block_registry import ...
+#   2. packages/  → enables: from workflow_engine.engine import WorkflowEngine
+#                             from block_library.src.generic.blocks import ...
+#   3. api dir    → enables: from app.routers.xxx import ...
+for _p in (_repo_root, _packages_dir, _api_dir):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
