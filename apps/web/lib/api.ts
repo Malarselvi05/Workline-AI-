@@ -4,7 +4,7 @@
  * Types mirror packages/shared-types/api_schemas.ts — keep them in sync.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -17,6 +17,7 @@ export interface NodeData {
     label: string;
     config?: Record<string, unknown>;
     reasoning?: string;
+    color?: string;
 }
 
 export interface WorkflowNode {
@@ -63,6 +64,22 @@ export interface Conversation {
     turns: ConversationTurn[];
 }
 
+export interface Workflow {
+    id: number;
+    name: string;
+    description?: string;
+    status: 'draft' | 'active' | 'archived';
+    version: number;
+    parent_version_id?: number;
+    created_at: string;
+    org_id: number;
+}
+
+export interface WorkflowDetail extends Workflow {
+    nodes: WorkflowNode[];
+    edges: WorkflowEdge[];
+}
+
 export interface WorkflowCreateRequest {
     name: string;
     description?: string;
@@ -70,20 +87,18 @@ export interface WorkflowCreateRequest {
     edges: WorkflowEdge[];
 }
 
-export interface Workflow {
-    id: number;
-    org_id?: number;
-    name: string;
-    description?: string;
-    status: 'draft' | 'active' | 'archived';
-    version: number;
-    parent_version_id?: number;
-    created_at: string;
+export interface TokenResponse {
+    access_token: string;
+    token_type: string;
+    refresh_token: string;
 }
 
-export interface WorkflowDetail extends Workflow {
-    nodes: WorkflowNode[];
-    edges: WorkflowEdge[];
+export interface User {
+    id: number;
+    email: string;
+    name: string;
+    role: 'admin' | 'editor' | 'viewer';
+    org_id?: number;
 }
 
 export interface WorkflowRun {
@@ -92,19 +107,6 @@ export interface WorkflowRun {
     status: 'pending' | 'running' | 'completed' | 'failed' | 'awaiting_review';
     started_at: string;
     ended_at?: string;
-    logs?: unknown;
-}
-
-export interface RunTriggerResponse {
-    status: string;
-    mode: 'background' | 'synchronous';
-    task_id?: string;
-    result?: unknown;
-}
-
-export interface TokenResponse {
-    access_token: string;
-    token_type: string;
 }
 
 // ── Internal fetch wrapper ─────────────────────────────────────────────────
@@ -116,13 +118,17 @@ function getAuthHeaders(): HeadersInit {
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-    const res = await fetch(`${API_BASE}${path}`, {
+    const url = `${API_BASE}${path}`;
+    const res = await fetch(url, {
         headers: {
             'Content-Type': 'application/json',
             ...getAuthHeaders(),
             ...options?.headers,
         },
         ...options,
+    }).catch(err => {
+        console.error(`[API Fetch Error] ${url}:`, err);
+        throw err;
     });
 
     if (res.status === 401) {
@@ -157,30 +163,49 @@ async function tryRefreshToken(): Promise<boolean> {
 // ── Auth ──────────────────────────────────────────────────────────────────
 
 export async function login(email: string, password: string): Promise<TokenResponse> {
-    const formData = new URLSearchParams({ username: email, password });
     const res = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formData.toString(),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
     });
     if (!res.ok) {
         const error = await res.json().catch(() => ({ detail: 'Login failed' }));
         throw new Error(error.detail);
     }
-    return res.json();
+    const data = await res.json();
+    localStorage.setItem('access_token', data.access_token);
+    return data;
+}
+
+export async function signup(name: string, email: string, password: string): Promise<TokenResponse> {
+    const res = await fetch(`${API_BASE}/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password }),
+    });
+    if (!res.ok) {
+        const error = await res.json().catch(() => ({ detail: 'Signup failed' }));
+        throw new Error(error.detail);
+    }
+    const data = await res.json();
+    localStorage.setItem('access_token', data.access_token);
+    return data;
 }
 
 export async function logout(): Promise<void> {
     await request('/auth/logout', { method: 'POST' });
-    localStorage.removeItem('access_token');
 }
 
-// ── Planning ──────────────────────────────────────────────────────────────
+export async function getMe(): Promise<User> {
+    return request<User>('/auth/me');
+}
 
-export async function planWorkflow(body: PlanRequest): Promise<WorkflowProposal> {
+// ── AI Planner ────────────────────────────────────────────────────────────
+
+export async function planWorkflow(data: PlanRequest): Promise<WorkflowProposal> {
     return request<WorkflowProposal>('/plan', {
         method: 'POST',
-        body: JSON.stringify(body),
+        body: JSON.stringify(data),
     });
 }
 
@@ -215,35 +240,26 @@ export async function updateWorkflow(
     });
 }
 
+export async function deleteWorkflow(id: number): Promise<void> {
+    await request(`/workflows/${id}`, { method: 'DELETE' });
+}
+
 export async function deployWorkflow(id: number): Promise<Workflow> {
     return request<Workflow>(`/workflows/${id}/deploy`, { method: 'POST' });
 }
 
-export async function deleteWorkflow(id: number): Promise<Workflow> {
-    return request<Workflow>(`/workflows/${id}`, { method: 'DELETE' });
+export async function runWorkflow(id: number): Promise<{ task_id?: string; status: string; mode: string, result?: unknown }> {
+    return request(`/workflows/${id}/run`, { method: 'POST' });
 }
 
-export async function rollbackWorkflow(
-    id: number,
-    versionId: number
-): Promise<Workflow> {
-    return request<Workflow>(`/workflows/${id}/rollback/${versionId}`, {
-        method: 'POST',
-    });
+export async function getWorkflowRuns(id: number): Promise<WorkflowRun[]> {
+    return request<WorkflowRun[]>(`/workflows/${id}/runs`);
 }
 
-// ── Runs ──────────────────────────────────────────────────────────────────
-
-export async function runWorkflow(
-    workflowId: number,
-    sandbox = false
-): Promise<RunTriggerResponse> {
-    return request<RunTriggerResponse>(`/workflows/${workflowId}/run`, {
-        method: 'POST',
-        body: JSON.stringify({ sandbox }),
-    });
+export async function getWorkflowVersions(id: number): Promise<Workflow[]> {
+    return request<Workflow[]>(`/workflows/${id}/versions`);
 }
 
-export async function listWorkflowRuns(workflowId: number): Promise<WorkflowRun[]> {
-    return request<WorkflowRun[]>(`/workflows/${workflowId}/runs`);
+export async function rollbackWorkflow(workflowId: number, versionId: number): Promise<Workflow> {
+    return request<Workflow>(`/workflows/${workflowId}/rollback/${versionId}`, { method: 'POST' });
 }

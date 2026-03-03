@@ -9,7 +9,7 @@ import {
     UserCheck, Database, ListTodo, Bell, Ruler, Receipt, Copy, Users,
 } from 'lucide-react';
 import { useChatStore } from '@/stores/chatStore';
-import { useCanvasStore, CATEGORY_COLORS } from '@/stores/canvasStore';
+import { useCanvasStore } from '@/stores/canvasStore';
 import { WorkflowProposal, WorkflowNode as ApiNode } from '@/lib/api';
 
 
@@ -43,11 +43,9 @@ const BLOCK_ICON_MAP: Record<string, { icon: string; color: string; category: st
 
 // ── Proposal Renderer ─────────────────────────────────────────────────────────
 function ProposalCard({
-    msgId,
     proposal,
     onApply,
 }: {
-    msgId: string;
     proposal: WorkflowProposal;
     onApply: () => void;
 }) {
@@ -434,7 +432,6 @@ export default function ChatPanel() {
                                     {/* Proposal card */}
                                     {msg.proposal && msg.proposal.nodes.length > 0 && (
                                         <ProposalCard
-                                            msgId={msg.id}
                                             proposal={msg.proposal}
                                             onApply={() => handleApply(msg.proposal!)}
                                         />

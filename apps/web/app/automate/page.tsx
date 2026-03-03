@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useCallback, useRef, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { getWorkflow } from '@/lib/api';
 import ReactFlow, {
     Background,
     BackgroundVariant,
@@ -15,7 +17,8 @@ import WorkflowNode from '@/components/canvas/nodes/WorkflowNode';
 import BlockPalette from '@/components/canvas/BlockPalette';
 import Toolbar from '@/components/canvas/Toolbar';
 import ChatPanel from '@/components/chatbot/ChatPanel';
-import { useCanvasStore, BlockDef } from '@/stores/canvasStore';
+import { RefreshCw, AlertCircle } from 'lucide-react';
+import { useCanvasStore, BlockDef, BLOCK_DEFINITIONS } from '@/stores/canvasStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 
 const nodeTypes = { workflowNode: WorkflowNode };
@@ -28,12 +31,68 @@ function CanvasContent() {
         onEdgesChange,
         onConnect,
         addNode,
+        setNodes,
+        setEdges,
         closeContextMenu,
         contextMenu,
     } = useCanvasStore();
 
+    const searchParams = useSearchParams();
+    const loadId = searchParams.get('load');
+
+    const [loading, setLoading] = React.useState(false);
+    const [error, setError] = React.useState<string | null>(null);
+
     const reactFlowRef = useRef<HTMLDivElement>(null);
     const rfInstanceRef = useRef<ReactFlowInstance | null>(null);
+
+    // ── Load workflow from URL ────────────────────────────────────────────────
+    useEffect(() => {
+        if (!loadId) {
+            setError(null);
+            return;
+        }
+
+        async function loadWorkflow() {
+            setLoading(true);
+            setError(null);
+            try {
+                const wf = await getWorkflow(Number(loadId));
+                // Transform to React Flow format
+                const rfNodes = wf.nodes.map((n: { id: string, type: string, position: { x: number, y: number }, data: { label: string, config?: Record<string, unknown>, color?: string }, reasoning?: string }) => {
+                    const def = BLOCK_DEFINITIONS.find(b => b.type === n.type);
+                    return {
+                        id: n.id,
+                        type: 'workflowNode',
+                        position: n.position,
+                        data: {
+                            label: n.data.label,
+                            blockType: n.type,
+                            config: n.data.config || {},
+                            reasoning: n.reasoning || '',
+                            color: n.data.color || def?.color || '#6366f1',
+                            category: def?.category || 'ai',
+                            icon: def?.icon || 'Box',
+                        }
+                    };
+                });
+                setNodes(rfNodes);
+                setEdges(wf.edges.map((e: { id: string, source: string, target: string, edge_type?: string }) => ({
+                    id: e.id,
+                    source: e.source,
+                    target: e.target,
+                    animated: true,
+                    style: { stroke: '#6366f1', strokeWidth: 2 }
+                })));
+            } catch (err) {
+                console.error("Failed to load workflow:", err);
+                setError(err instanceof Error ? err.message : "Failed to load workflow data");
+            } finally {
+                setLoading(false);
+            }
+        }
+        loadWorkflow();
+    }, [loadId, setNodes, setEdges]);
 
     // ── Zoom to Fit ───────────────────────────────────────────────────────────
     const handleZoomFit = useCallback(() => {
@@ -91,11 +150,14 @@ function CanvasContent() {
         }
     }, []);
 
+    const { user } = useWorkspaceStore();
+    const isEditor = user?.role === 'admin' || user?.role === 'editor';
+
     return (
         <div style={{ display: 'flex', height: '100%' }}>
-            <BlockPalette />
+            {isEditor && <BlockPalette />}
 
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
                 <Toolbar onZoomFit={handleZoomFit} />
 
                 <div
@@ -122,7 +184,14 @@ function CanvasContent() {
                             style: { stroke: '#6366f1', strokeWidth: 2 },
                         }}
                         proOptions={{ hideAttribution: true }}
-                        deleteKeyCode={['Backspace', 'Delete']}
+                        deleteKeyCode={isEditor ? ['Backspace', 'Delete'] : []}
+                        nodesDraggable={isEditor}
+                        nodesConnectable={isEditor}
+                        elementsSelectable={isEditor}
+                        onNodeContextMenu={(event) => {
+                            if (!isEditor) return;
+                            event.preventDefault();
+                        }}
                     >
                         <Background
                             variant={BackgroundVariant.Dots}
@@ -135,6 +204,37 @@ function CanvasContent() {
                             nodeColor={(n) => n.data?.color || '#6366f1'}
                             style={{ background: '#111827' }}
                         />
+
+                        {loading && (
+                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(17, 24, 39, 0.4)', zIndex: 10, backdropFilter: 'blur(4px)' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                                    <RefreshCw size={32} color="var(--accent-primary)" style={{ animation: 'spin-slow 1s linear infinite' }} />
+                                    <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>Fetching workflow logic...</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {error && (
+                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(17, 24, 39, 0.7)', zIndex: 11, backdropFilter: 'blur(8px)' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, maxWidth: 400, textAlign: 'center', padding: 32 }} className="glass-card">
+                                    <AlertCircle size={48} color="#ef4444" />
+                                    <div>
+                                        <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Access Denied or Error</h3>
+                                        <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{error}</p>
+                                    </div>
+                                    <div style={{ fontSize: 13, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', padding: 12, borderRadius: 8, marginTop: 8 }}>
+                                        This workflow may belong to another organization. Please ensure you are logged into the correct account.
+                                    </div>
+                                    <button
+                                        onClick={() => window.location.reload()}
+                                        className="btn-primary"
+                                        style={{ marginTop: 8 }}
+                                    >
+                                        Try Refreshing
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </ReactFlow>
                 </div>
             </div>
@@ -145,11 +245,30 @@ function CanvasContent() {
 }
 
 export default function AutomatePage() {
-    const { setActiveTab } = useWorkspaceStore();
+    return (
+        <React.Suspense fallback={<div style={{ padding: 20 }}>Loading Workspace...</div>}>
+            <AutomatePageContent />
+        </React.Suspense>
+    );
+}
+
+function AutomatePageContent() {
+    const { setActiveTab, user, workflows } = useWorkspaceStore();
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const loadId = searchParams.get('load');
 
     useEffect(() => {
         setActiveTab('automate');
-    }, [setActiveTab]);
+
+        // If landing on an empty automate page, redirect to first workflow if one exists
+        if (user && !loadId && (workflows?.length || 0) > 0) {
+            const firstWf = workflows.find((w: { status: string; id: number }) => w.status === 'active') || workflows[0];
+            if (firstWf) {
+                router.replace(`/automate?load=${firstWf.id}`);
+            }
+        }
+    }, [setActiveTab, user, loadId, workflows, router]);
 
     return (
         <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>

@@ -2,11 +2,55 @@ from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models import models
-from app.schemas.auth import LoginRequest, Token, UserResponse
-from app.auth.jwt import verify_password, create_access_token, create_refresh_token, decode_token
+from app.schemas.auth import LoginRequest, Token, UserResponse, SignupRequest
+from app.auth.jwt import get_password_hash, verify_password, create_access_token, create_refresh_token, decode_token
 from datetime import timedelta
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+@router.post("/signup", response_model=Token)
+async def signup(response: Response, signup_data: SignupRequest, db: Session = Depends(get_db)):
+    # Check if user already exists
+    existing_user = db.query(models.User).filter(models.User.email == signup_data.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Create a default organisation for the new user
+    new_org = models.Organisation(name=f"{signup_data.name}'s Org", plan="basic")
+    db.add(new_org)
+    db.commit()
+    db.refresh(new_org)
+    
+    # Create the new user
+    new_user = models.User(
+        name=signup_data.name,
+        email=signup_data.email,
+        password_hash=get_password_hash(signup_data.password),
+        role="admin",
+        org_id=new_org.id
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    
+    # Generate tokens
+    access_token = create_access_token(data={"sub": new_user.email})
+    refresh_token = create_refresh_token(data={"sub": new_user.email})
+    
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        max_age=7 * 24 * 60 * 60,
+        samesite="lax",
+        secure=False,
+    )
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "refresh_token": refresh_token
+    }
 
 @router.post("/login", response_model=Token)
 async def login(response: Response, login_data: LoginRequest, db: Session = Depends(get_db)):

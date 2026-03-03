@@ -37,7 +37,7 @@ const statusBadge = (status: string) => {
 };
 
 export default function DashboardPage() {
-    const { setActiveTab } = useWorkspaceStore();
+    const { setActiveTab, user } = useWorkspaceStore();
 
     useEffect(() => {
         setActiveTab('dashboard');
@@ -47,9 +47,11 @@ export default function DashboardPage() {
         <div style={{ padding: '28px 32px', maxWidth: 1200, height: '100vh', overflowY: 'auto' }}>
             {/* ── Header ── */}
             <div style={{ marginBottom: 28 }} className="animate-fade-in">
-                <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Dashboard</h1>
+                <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>
+                    Welcome back, {user?.name || 'User'}
+                </h1>
                 <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
-                    Overview of your automation workflows and recent activity.
+                    Overview of your automation workflows for <strong>{user?.name || 'your'}&apos;s Organization</strong>.
                 </p>
             </div>
 

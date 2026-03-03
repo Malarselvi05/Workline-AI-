@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import {
     Play,
     FileText,
@@ -17,30 +17,33 @@ import {
     AlertCircle,
     CheckCircle,
     Clock,
+    Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
-import { getWorkflow, listWorkflows, runWorkflow, deployWorkflow, rollbackWorkflow, Workflow, WorkflowDetail } from '@/lib/api';
+import { getWorkflow, runWorkflow, rollbackWorkflow, getWorkflowVersions, Workflow, WorkflowDetail } from '@/lib/api';
 import DeployModal from '@/components/canvas/DeployModal';
 
 const TABS = [
     { id: 'runs', label: 'Runs', icon: Activity },
     { id: 'results', label: 'Results', icon: FileText },
+    { id: 'edit', label: 'Edit', icon: Zap },
     { id: 'logs', label: 'Logs', icon: FileText },
     { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
-// Mock runs for display
 const MOCK_DETAIL_RUNS = [
-    { id: 1, status: 'completed', startedAt: '2025-02-25 19:01:23', duration: '3.1s', blocks: 3, triggeredBy: 'Admin' },
-    { id: 2, status: 'completed', startedAt: '2025-02-25 18:45:12', duration: '5.4s', blocks: 3, triggeredBy: 'Admin' },
-    { id: 3, status: 'failed', startedAt: '2025-02-25 17:30:00', duration: '1.2s', blocks: 2, triggeredBy: 'API' },
+    { id: 1, status: 'completed', startedAt: '2026-03-03 10:01:23', duration: '3.1s', blocks: 3, triggeredBy: 'Admin' },
+    { id: 2, status: 'completed', startedAt: '2026-03-03 09:45:12', duration: '5.4s', blocks: 3, triggeredBy: 'Admin' },
+    { id: 3, status: 'failed', startedAt: '2026-03-03 08:30:00', duration: '1.2s', blocks: 2, triggeredBy: 'API' },
 ];
 
 export default function WorkflowDetailPage() {
     const params = useParams();
+    const searchParams = useSearchParams();
+    const router = useRouter();
     const workflowId = Number(params.id);
-    const [activeTab, setActiveTab] = useState('runs');
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'runs');
     const [running, setRunning] = useState(false);
     const [rolling, setRolling] = useState<number | null>(null);
     const [deployModalOpen, setDeployModalOpen] = useState(false);
@@ -51,10 +54,12 @@ export default function WorkflowDetailPage() {
     const [versionHistory, setVersionHistory] = useState<Workflow[]>([]);
     const [loadingDetail, setLoadingDetail] = useState(true);
 
-    const { setActiveWorkflow, workflows, updateWorkflowStatus } = useWorkspaceStore();
+    const { setActiveWorkflow, workflows, updateWorkflowStatus, user } = useWorkspaceStore();
+    const isEditor = user?.role === 'admin' || user?.role === 'editor';
 
     // Prefer real detail from API; fall back to workspaceStore
     const workflow = workflowDetail ?? workflows.find((w) => w.id === workflowId);
+
 
     const showToast = (message: string, type: 'success' | 'error') => {
         setToast({ message, type });
@@ -68,13 +73,9 @@ export default function WorkflowDetailPage() {
             const detail = await getWorkflow(workflowId);
             setWorkflowDetail(detail);
 
-            // Build version chain: all workflows with parent_version_id pointing to this branch
-            const all = await listWorkflows();
+            const history = await getWorkflowVersions(workflowId);
             // Show all versions except this one (historic)
-            const history = all.filter(
-                (w) => w.id !== workflowId && (w.parent_version_id !== undefined && w.parent_version_id !== null)
-            );
-            setVersionHistory(history);
+            setVersionHistory(history.filter(w => w.id !== workflowId));
         } catch {
             // Silently fall back to store data
         }
@@ -111,9 +112,10 @@ export default function WorkflowDetailPage() {
         if (!confirm(`Roll back to version #${versionId}? A new draft will be created.`)) return;
         setRolling(versionId);
         try {
-            await rollbackWorkflow(workflowId, versionId);
+            const result = await rollbackWorkflow(workflowId, versionId);
             showToast('Rollback successful! A new draft version has been created.', 'success');
-            await fetchDetail();
+            // Redirect to the NEW workflow ID
+            router.push(`/workflow/${result.id}?tab=settings`);
         } catch (err) {
             showToast(`Rollback failed: ${err instanceof Error ? err.message : 'Unknown'}`, 'error');
         }
@@ -138,13 +140,13 @@ export default function WorkflowDetailPage() {
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                         <span className={`badge ${workflow?.status === 'active' ? 'badge-success' :
-                                workflow?.status === 'archived' ? 'badge-neutral' : 'badge-warning'
+                            workflow?.status === 'archived' ? 'badge-neutral' : 'badge-warning'
                             }`}>
                             {workflow?.status || 'draft'}
                         </span>
 
                         {/* Deploy from detail page */}
-                        {workflow?.status !== 'active' && (
+                        {isEditor && workflow?.status !== 'active' && (
                             <button
                                 className="btn-secondary"
                                 onClick={() => setDeployModalOpen(true)}
@@ -250,6 +252,31 @@ export default function WorkflowDetailPage() {
                     </div>
                 )}
 
+                {/* EDIT TAB */}
+                {activeTab === 'edit' && (
+                    <div className="glass-card" style={{ padding: 40, textAlign: 'center' }}>
+                        <Zap size={40} color="var(--accent-primary)" style={{ margin: '0 auto 12px' }} />
+                        <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Interactive Canvas</p>
+                        <p style={{ fontSize: 14, color: 'var(--text-secondary)', maxWidth: 400, margin: '0 auto 20px' }}>
+                            View and edit your workflow logic directly on the 2D graph canvas. Add new blocks, change connections, and re-simulate.
+                        </p>
+                        {isEditor ? (
+                            <Link href={`/automate?load=${workflowId}`} className="btn-primary" style={{ display: 'inline-flex', width: 'auto' }}>
+                                Open in Editor
+                            </Link>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                                <p style={{ fontSize: 13, color: 'var(--text-secondary)', maxWidth: 300 }}>
+                                    You have read-only access to this workflow. You can view the logic on the canvas but cannot make changes.
+                                </p>
+                                <Link href={`/automate?load=${workflowId}`} className="btn-secondary" style={{ display: 'inline-flex', width: 'auto' }}>
+                                    View in Canvas
+                                </Link>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* LOGS TAB */}
                 {activeTab === 'logs' && (
                     <div className="glass-card" style={{ padding: 20 }}>
@@ -342,19 +369,21 @@ export default function WorkflowDetailPage() {
                                                     {v.status}
                                                 </span>
                                             </div>
-                                            <button
-                                                className="btn-secondary"
-                                                onClick={() => handleRollback(v.id)}
-                                                disabled={rolling === v.id}
-                                                style={{ fontSize: 11 }}
-                                            >
-                                                {rolling === v.id ? (
-                                                    <RefreshCw size={12} style={{ animation: 'spin-slow 1s linear infinite' }} />
-                                                ) : (
-                                                    <RotateCcw size={12} />
-                                                )}
-                                                {rolling === v.id ? 'Rolling back…' : 'Rollback to this version'}
-                                            </button>
+                                            {isEditor && (
+                                                <button
+                                                    className="btn-secondary"
+                                                    onClick={() => handleRollback(v.id)}
+                                                    disabled={rolling === v.id}
+                                                    style={{ fontSize: 11 }}
+                                                >
+                                                    {rolling === v.id ? (
+                                                        <RefreshCw size={12} style={{ animation: 'spin-slow 1s linear infinite' }} />
+                                                    ) : (
+                                                        <RotateCcw size={12} />
+                                                    )}
+                                                    {rolling === v.id ? 'Rolling back…' : 'Rollback to this version'}
+                                                </button>
+                                            )}
                                         </div>
                                     ))}
                                 </div>

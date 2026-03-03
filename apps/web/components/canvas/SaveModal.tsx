@@ -8,11 +8,12 @@ import { useCanvasStore } from '@/stores/canvasStore';
 
 interface SaveModalProps {
     open: boolean;
+    parentVersionId?: number;
     onClose: () => void;
     onSaved: (workflowId: number) => void;
 }
 
-export default function SaveModal({ open, onClose, onSaved }: SaveModalProps) {
+export default function SaveModal({ open, parentVersionId, onClose, onSaved }: SaveModalProps) {
     const { nodes, edges } = useCanvasStore();
     const { addWorkflowTab } = useWorkspaceStore();
 
@@ -60,6 +61,7 @@ export default function SaveModal({ open, onClose, onSaved }: SaveModalProps) {
                     target: e.target,
                     edge_type: (e.data?.edge_type as 'default' | 'condition_true' | 'condition_false') || 'default',
                 })),
+                parent_version_id: parentVersionId,
             };
             const result = await createWorkflow(workflowData);
             addWorkflowTab({
@@ -69,6 +71,7 @@ export default function SaveModal({ open, onClose, onSaved }: SaveModalProps) {
                 status: 'draft',
                 version: result.version || 1,
                 created_at: result.created_at || new Date().toISOString(),
+                org_id: result.org_id,
             });
             onSaved(result.id);
             onClose();

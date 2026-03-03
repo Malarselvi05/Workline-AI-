@@ -24,7 +24,8 @@ export default function Toolbar({ onZoomFit }: ToolbarProps) {
         applyAutoLayout, diffState, clearHighlights,
     } = useCanvasStore();
     const { toggleChat, isOpen: chatOpen } = useChatStore();
-    const { activeWorkflowId, workflows } = useWorkspaceStore();
+    const { activeWorkflowId, workflows, user } = useWorkspaceStore();
+    const isEditor = user?.role === 'admin' || user?.role === 'editor';
 
     const [saveModalOpen, setSaveModalOpen] = useState(false);
     const [deployModalOpen, setDeployModalOpen] = useState(false);
@@ -172,41 +173,45 @@ export default function Toolbar({ onZoomFit }: ToolbarProps) {
                 <div style={{ width: 1, height: 24, background: 'var(--border-default)', margin: '0 6px' }} />
 
                 {/* Save */}
-                <button
-                    className="btn-secondary"
-                    onClick={handleSaveClick}
-                    style={{ fontSize: 12 }}
-                    title="Save workflow to server"
-                >
-                    <Save size={14} />
-                    Save
-                </button>
+                {isEditor && (
+                    <button
+                        className="btn-secondary"
+                        onClick={handleSaveClick}
+                        style={{ fontSize: 12 }}
+                        title="Save workflow to server"
+                    >
+                        <Save size={14} />
+                        Save
+                    </button>
+                )}
 
                 {/* Deploy */}
-                <button
-                    className="btn-primary"
-                    onClick={handleDeployClick}
-                    disabled={!canDeploy}
-                    style={{ fontSize: 12 }}
-                    title={
-                        !currentWorkflowId
-                            ? 'Save workflow first'
-                            : currentWorkflow?.status === 'active'
-                                ? 'Already deployed (Active)'
-                                : 'Deploy this workflow'
-                    }
-                >
-                    <Rocket size={14} />
-                    Deploy
-                    {currentWorkflow?.status === 'active' && (
-                        <span style={{
-                            fontSize: 9, background: '#10b981', color: 'white',
-                            borderRadius: 4, padding: '1px 5px', marginLeft: 2,
-                        }}>
-                            Active
-                        </span>
-                    )}
-                </button>
+                {isEditor && (
+                    <button
+                        className="btn-primary"
+                        onClick={handleDeployClick}
+                        disabled={!canDeploy}
+                        style={{ fontSize: 12 }}
+                        title={
+                            !currentWorkflowId
+                                ? 'Save workflow first'
+                                : currentWorkflow?.status === 'active'
+                                    ? 'Already deployed (Active)'
+                                    : 'Deploy this workflow'
+                        }
+                    >
+                        <Rocket size={14} />
+                        Deploy
+                        {currentWorkflow?.status === 'active' && (
+                            <span style={{
+                                fontSize: 9, background: '#10b981', color: 'white',
+                                borderRadius: 4, padding: '1px 5px', marginLeft: 2,
+                            }}>
+                                Active
+                            </span>
+                        )}
+                    </button>
+                )}
 
                 {/* Clear diff highlights */}
                 {hasDiff && (
@@ -231,9 +236,11 @@ export default function Toolbar({ onZoomFit }: ToolbarProps) {
                 )}
 
                 {/* Clear canvas */}
-                <button className="btn-icon" onClick={clearCanvas} title="Clear Canvas">
-                    <Trash2 size={15} />
-                </button>
+                {isEditor && (
+                    <button className="btn-icon" onClick={clearCanvas} title="Clear Canvas">
+                        <Trash2 size={15} />
+                    </button>
+                )}
 
                 {/* Toggle AI Chat */}
                 <button
@@ -275,6 +282,7 @@ export default function Toolbar({ onZoomFit }: ToolbarProps) {
             {/* ── Modals ── */}
             <SaveModal
                 open={saveModalOpen}
+                parentVersionId={activeWorkflowId || undefined}
                 onClose={() => setSaveModalOpen(false)}
                 onSaved={handleSaved}
             />

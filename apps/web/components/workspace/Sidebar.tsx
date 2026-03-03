@@ -9,10 +9,15 @@ import {
     ChevronLeft,
     ChevronRight,
     Workflow,
-    User,
+    User as UserIcon,
     Package,
+    LogOut,
+    Settings,
 } from 'lucide-react';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useChatStore } from '@/stores/chatStore';
+import { logout as apiLogout } from '@/lib/api';
+import { useRouter } from 'next/navigation';
 
 const NAV_ITEMS = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
@@ -28,7 +33,34 @@ export default function Sidebar() {
         toggleSidebar,
         setActiveWorkflow,
         fetchWorkflows,
+        user,
+        setUser,
     } = useWorkspaceStore();
+    const isEditor = user?.role === 'admin' || user?.role === 'editor';
+    const router = useRouter();
+
+    // Helper to get the best URL for the "Automate" nav item
+    const getAutomateUrl = () => {
+        // Try to load the most relevant workflow (active first, then anything)
+        const firstWf = workflows.find(w => w.status === 'active') || workflows[0];
+        return firstWf ? `/automate?load=${firstWf.id}` : '/automate';
+    };
+
+    const { clearMessages } = useChatStore();
+
+    const handleLogout = async () => {
+        try {
+            await apiLogout();
+        } catch (err) {
+            console.error('Logout API failed:', err);
+        } finally {
+            // Always clear state and redirect
+            useWorkspaceStore.getState().reset();
+            clearMessages();
+            localStorage.removeItem('access_token');
+            router.push('/login');
+        }
+    };
 
     useEffect(() => {
         fetchWorkflows();
@@ -97,11 +129,12 @@ export default function Sidebar() {
                         </p>
                     )}
                     {NAV_ITEMS.map((item) => {
-                        const isActive = pathname === item.href;
+                        const href = item.id === 'automate' ? getAutomateUrl() : item.href;
+                        const isActive = pathname === item.href || (item.id === 'automate' && pathname === '/automate');
                         return (
                             <Link
                                 key={item.id}
-                                href={item.href}
+                                href={href}
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
@@ -137,10 +170,13 @@ export default function Sidebar() {
                         {workflows.map((wf) => {
                             const isActive = activeWorkflowId === wf.id && pathname.startsWith('/workflow');
                             const dotColor = statusColor(wf.status);
+                            // Everyone goes to canvas on primary click for speed/UX
+                            const wfHref = `/automate?load=${wf.id}`;
+
                             return (
                                 <Link
                                     key={wf.id}
-                                    href={`/workflow/${wf.id}`}
+                                    href={wfHref}
                                     onClick={() => setActiveWorkflow(wf.id)}
                                     style={{
                                         display: 'flex',
@@ -181,6 +217,21 @@ export default function Sidebar() {
                                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                                                 {wf.name}
                                             </span>
+                                            {isEditor && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        setActiveWorkflow(wf.id);
+                                                        router.push(`/workflow/${wf.id}?tab=runs`);
+                                                    }}
+                                                    className="btn-icon"
+                                                    style={{ width: 22, height: 22, padding: 0, opacity: isActive ? 1 : 0.5, marginLeft: 4 }}
+                                                    title="Workflow Details & Runs"
+                                                >
+                                                    <Settings size={12} />
+                                                </button>
+                                            )}
                                             <span
                                                 className={`badge ${wf.status === 'active' ? 'badge-success' : wf.status === 'archived' ? 'badge-neutral' : 'badge-warning'}`}
                                                 style={{ marginLeft: 'auto', fontSize: 9, flexShrink: 0 }}
@@ -229,21 +280,13 @@ export default function Sidebar() {
             {/* ── Bottom ── */}
             <div
                 style={{
-                    padding: sidebarCollapsed ? '12px 8px' : '12px 16px',
+                    padding: sidebarCollapsed ? '12px 0' : '12px 16px',
                     borderTop: '1px solid var(--border-default)',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 4,
+                    gap: 8,
                 }}
             >
-                <button
-                    className="btn-ghost"
-                    onClick={toggleSidebar}
-                    style={{ justifyContent: sidebarCollapsed ? 'center' : 'flex-start', width: '100%' }}
-                    title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                >
-                    {sidebarCollapsed ? <ChevronRight size={16} /> : <><ChevronLeft size={16} /> Collapse</>}
-                </button>
                 {!sidebarCollapsed && (
                     <div
                         style={{
@@ -251,13 +294,15 @@ export default function Sidebar() {
                             alignItems: 'center',
                             gap: 10,
                             padding: '8px 12px',
+                            background: 'rgba(255, 255, 255, 0.02)',
                             borderRadius: 'var(--radius-sm)',
+                            border: '1px solid var(--border-default)',
                         }}
                     >
                         <div
                             style={{
-                                width: 28,
-                                height: 28,
+                                width: 32,
+                                height: 32,
                                 borderRadius: '50%',
                                 background: 'var(--gradient-primary)',
                                 display: 'flex',
@@ -266,14 +311,56 @@ export default function Sidebar() {
                                 flexShrink: 0,
                             }}
                         >
-                            <User size={14} color="white" />
+                            <UserIcon size={16} color="white" />
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.2 }}>Admin User</p>
-                            <p style={{ fontSize: 10, color: 'var(--text-muted)' }}>admin@workline.ai</p>
+                            <p style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {user?.name || 'Loading...'}
+                            </p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                                <span style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+                                    {user?.role || 'user'}
+                                </span>
+                                <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--text-muted)' }} />
+                                <span style={{ fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {user?.email || ''}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 )}
+
+                <div style={{ display: 'flex', flexDirection: sidebarCollapsed ? 'column' : 'row', gap: 4 }}>
+                    <button
+                        className="btn-ghost"
+                        onClick={toggleSidebar}
+                        style={{
+                            justifyContent: 'center',
+                            flex: sidebarCollapsed ? 'unset' : 1,
+                            padding: sidebarCollapsed ? '10px 0' : '8px 10px',
+                            minWidth: sidebarCollapsed ? '100%' : 'unset',
+                        }}
+                        title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    >
+                        {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+                    </button>
+
+                    <button
+                        className="btn-ghost"
+                        onClick={handleLogout}
+                        style={{
+                            justifyContent: 'center',
+                            color: 'var(--accent-danger)',
+                            flex: sidebarCollapsed ? 'unset' : 1,
+                            padding: sidebarCollapsed ? '10px 0' : '8px 10px',
+                            minWidth: sidebarCollapsed ? '100%' : 'unset',
+                        }}
+                        title="Log out"
+                    >
+                        <LogOut size={18} />
+                        {!sidebarCollapsed && <span style={{ fontSize: 13, fontWeight: 500 }}>Logout</span>}
+                    </button>
+                </div>
             </div>
         </aside>
     );

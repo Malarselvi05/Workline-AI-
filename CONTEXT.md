@@ -1,7 +1,7 @@
 > **Purpose**: Running state-of-the-codebase document for both human devs and AI assistants.
 > **Rule**: Every time you make significant code changes, update the relevant section of this file.
 > **Team Plan**: See [`TEAM_PLAN.md`](./TEAM_PLAN.md) for the full phase-by-phase checklist for Member J and Member M.
-> **Last Updated**: 2026-02-27 (J4 — Workflow Save / Deploy UI complete)
+> **Last Updated**: 2026-03-03 (Phase 1 Integration Complete — Canvas/Deploy/Rollback verified)
 
 
 ---
@@ -139,7 +139,8 @@ Workline-AI/
 | `POST /workflows/{id}/deploy`                | `routers/workflows.py`                   | ✅ Done                                   |
 | `POST /workflows/{id}/run`                   | `routers/workflows.py` + `core/tasks.py` | ✅ Done (Celery)                          |
 | `GET /workflows/{id}/runs`                   | `routers/workflows.py`                   | ✅ Done                                   |
-| `POST /workflows/{id}/rollback/{version_id}` | `routers/workflows.py`                   | ✅ Done                                   |
+| `POST /workflows/{id}/rollback/{version_id}` | `routers/workflows.py`                   | ✅ Done [M7]                              |
+| `GET /workflows/{id}/versions`               | `routers/workflows.py`                   | ✅ Done [M7]                              |
 | `WS /ws/runs/{run_id}`                       | `routers/ws.py`                          | ✅ Done [M4]                              |
 | `POST /workflows/{id}/runs`                  | `routers/runs.py`                        | ✅ Done [M4]                              |
 | `GET /workflows/{id}/runs`                   | `routers/runs.py`                        | ✅ Done [M4]                              |
@@ -213,14 +214,12 @@ Workline-AI/
 
 ### 🟠 Backend
 - [ ] **Authentication wiring**: JWT login/register exist but RBAC is not enforced on all routes
-- [ ] **Workflow versioning**: `version` column exists but no bump/rollback UI logic
 - [ ] **Drift alerts**: no monitoring/alerting logic yet
 - [ ] **MinIO file storage**: routes exist but actual MinIO calls not wired
 
 ### 🟡 Frontend (J4 complete — Phase 2 remaining)
 - [ ] **Dashboard**: mock data, not wired to real API (J5)
 - [ ] **Human review**: no UI for awaiting_review run state yet (M6)
-- [ ] **WorkflowDetail versions**: rollback UI done; M7 must implement GET /workflows/{id}/versions for full history
 
 ### 🟢 Done ✅
 - J1 — Conversation & Planning Backend (real Groq LLM)

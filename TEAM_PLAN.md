@@ -3,7 +3,7 @@
 > Each member owns a feature end-to-end: its database models, API routes, services, and UI.
 >
 > **Rule**: Mark tasks `[x]` when done. Update `CONTEXT.md` on every meaningful commit.
-> **Last Updated**: 2026-02-27 (J4 — Workflow Save / Deploy UI complete)
+> **Last Updated**: 2026-03-03 (Phase 1 Integration Complete — Canvas/Deploy/Rollback verified)
 
 
 ---
@@ -212,16 +212,16 @@ These decisions must be made and committed before either member starts Phase 1:
 
 > Run together. Both must pass before Phase 2 starts.
 
-- [ ] `docker-compose up` — full stack comes up with no errors
-- [ ] Register + login → redirects to dashboard
-- [ ] Type "Classify PDFs and store by job number" in chatbot → proposal renders on canvas with reasoning accordion
-- [ ] Apply to Canvas → nodes appear, Apply is the ONLY trigger (no execution)
-- [ ] Save → sidebar tab auto-creates with AI-suggested name
-- [ ] Simulate (sandbox) → per-node status badges update live on canvas
-- [ ] Deploy → audit log entry written, tab shows "Active"
-- [ ] Rollback → previous version restored on canvas
-- [ ] Viewer role user cannot click Edit or Deploy
-- [ ] ✅ P0 success criteria all pass
+- [x] `docker-compose up` — full stack comes up with no errors [x]
+- [x] Register + login → redirects to dashboard [x]
+- [x] Type "Classify PDFs and store by job number" in chatbot → proposal renders on canvas with reasoning accordion [x]
+- [x] Apply to Canvas → nodes appear, Apply is the ONLY trigger (no execution) [x]
+- [x] Save → sidebar tab auto-creates with AI-suggested name [x]
+- [x] Simulate (sandbox) → per-node status badges update live on canvas [x]
+- [x] Deploy → audit log entry written, tab shows "Active" [x]
+- [x] Rollback → previous version restored on canvas (Redirection & ancestry fixed) [x]
+- [x] Viewer role user cannot click Edit or Deploy [x]
+- [x] ✅ P0 success criteria all pass [x]
 
 ---
 

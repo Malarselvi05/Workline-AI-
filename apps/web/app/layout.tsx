@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Sidebar from "@/components/workspace/Sidebar";
+import AppContent from "@/components/layout/AppContent";
 
 export const metadata: Metadata = {
   title: "WorkLine AI — Agentic Automation Platform",
@@ -14,11 +14,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-        <Sidebar />
-        <main style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
-          {children}
-        </main>
+      <body style={{ background: 'var(--bg-primary)', margin: 0 }}>
+        <AppContent>{children}</AppContent>
       </body>
     </html>
   );

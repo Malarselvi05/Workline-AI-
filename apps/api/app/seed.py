@@ -49,13 +49,33 @@ def seed():
                 db.add(user)
                 db.commit()
                 print("Updated admin user with org_id.")
-            print("Admin user already exists.")
+        # Get or create the demo viewer user
+        viewer = db.query(models.User).filter(models.User.email == "viewer@workline.ai").first()
+        if not viewer:
+            viewer = models.User(
+                name="Viewer User",
+                email="viewer@workline.ai",
+                role="viewer",
+                org_id=org.id,
+                password_hash=get_password_hash("viewer123")
+            )
+            db.add(viewer)
+            db.commit()
+            print("Created viewer user.")
+        else:
+            print("Viewer user already exists.")
 
         # Get or create the Document Classification workflow
         workflow = db.query(models.Workflow).filter(
             models.Workflow.name == "Reference Document Classification",
             models.Workflow.org_id == org.id
         ).first()
+
+        if workflow:
+            # Delete and recreate to ensure clean state
+            db.delete(workflow)
+            db.commit()
+            workflow = None
 
         if not workflow:
             workflow = models.Workflow(
@@ -88,6 +108,7 @@ def seed():
                 )
             ]
             db.add_all(nodes)
+            db.flush()  # Ensure nodes are flushed before adding edges that reference them
 
             # Add Edges
             edges = [

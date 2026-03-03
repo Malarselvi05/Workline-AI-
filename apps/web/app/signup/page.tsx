@@ -2,11 +2,12 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Zap, Lock, Mail, Eye, EyeOff } from 'lucide-react';
-import { login as apiLogin } from '@/lib/api';
+import { Zap, Lock, Mail, User, Eye, EyeOff } from 'lucide-react';
+import { signup } from '@/lib/api';
 
-export default function LoginPage() {
+export default function SignupPage() {
     const router = useRouter();
+    const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -19,10 +20,10 @@ export default function LoginPage() {
         setError('');
 
         try {
-            await apiLogin(email, password);
+            await signup(name, email, password);
             router.push('/dashboard');
         } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : 'Login failed. Please check your credentials.';
+            const message = err instanceof Error ? err.message : 'Signup failed. Please try again.';
             setError(message);
         } finally {
             setLoading(false);
@@ -78,8 +79,8 @@ export default function LoginPage() {
                     >
                         <Zap size={24} color="white" />
                     </div>
-                    <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Welcome back</h1>
-                    <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Sign in to WorkLine AI</p>
+                    <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Create Account</h1>
+                    <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Get started with WorkLine AI</p>
                 </div>
 
                 {error && (
@@ -99,6 +100,24 @@ export default function LoginPage() {
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <div>
                         <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
+                            Full Name
+                        </label>
+                        <div style={{ position: 'relative' }}>
+                            <User size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                            <input
+                                className="input"
+                                type="text"
+                                placeholder="John Doe"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                style={{ paddingLeft: 34 }}
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
                             Email
                         </label>
                         <div style={{ position: 'relative' }}>
@@ -106,7 +125,7 @@ export default function LoginPage() {
                             <input
                                 className="input"
                                 type="email"
-                                placeholder="admin@workline.ai"
+                                placeholder="name@company.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 style={{ paddingLeft: 34 }}
@@ -124,7 +143,7 @@ export default function LoginPage() {
                             <input
                                 className="input"
                                 type={showPassword ? 'text' : 'password'}
-                                placeholder="Enter your password"
+                                placeholder="Create a password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 style={{ paddingLeft: 34, paddingRight: 38 }}
@@ -140,33 +159,23 @@ export default function LoginPage() {
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                            <input type="checkbox" style={{ accentColor: 'var(--accent-primary)' }} />
-                            Remember me
-                        </label>
-                        <a href="#" style={{ fontSize: 12, color: 'var(--accent-primary)', textDecoration: 'none' }}>
-                            Forgot password?
-                        </a>
-                    </div>
-
                     <button
                         className="btn-primary"
                         type="submit"
                         disabled={loading}
                         style={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: 14, marginTop: 8 }}
                     >
-                        {loading ? 'Signing in...' : 'Sign in'}
+                        {loading ? 'Creating account...' : 'Sign up'}
                     </button>
                 </form>
 
                 <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)', marginTop: 24 }}>
-                    Don&apos;t have an account?{' '}
+                    Already have an account?{' '}
                     <button
-                        onClick={() => router.push('/signup')}
+                        onClick={() => router.push('/login')}
                         style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontWeight: 500, cursor: 'pointer', padding: 0 }}
                     >
-                        Sign up
+                        Sign in
                     </button>
                 </p>
             </div>

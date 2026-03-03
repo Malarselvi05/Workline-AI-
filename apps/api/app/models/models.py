@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Float, Text, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Float, Text, Boolean, ForeignKeyConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -41,7 +41,9 @@ class Workflow(Base):
 class WorkflowNode(Base):
     __tablename__ = "workflow_nodes"
     id = Column(String, primary_key=True)  # React Flow used string IDs
-    workflow_id = Column(Integer, ForeignKey("workflows.id"))
+    workflow_id = Column(Integer, ForeignKey("workflows.id"), primary_key=True)
+    org_id = Column(Integer, ForeignKey("organisations.id"), nullable=True)
+    label = Column(String)
     type = Column(String)
     config_json = Column(JSON)
     position_x = Column(Float)
@@ -53,12 +55,27 @@ class WorkflowNode(Base):
 class WorkflowEdge(Base):
     __tablename__ = "workflow_edges"
     id = Column(String, primary_key=True)
-    workflow_id = Column(Integer, ForeignKey("workflows.id"))
-    source_node_id = Column(String, ForeignKey("workflow_nodes.id"))
-    target_node_id = Column(String, ForeignKey("workflow_nodes.id"))
+    workflow_id = Column(Integer, ForeignKey("workflows.id"), primary_key=True)
+    org_id = Column(Integer, ForeignKey("organisations.id"), nullable=True)
+    source_node_id = Column(String)
+    target_node_id = Column(String)
     edge_type = Column(String, default="default")  # default, condition_true, condition_false
     
     workflow = relationship("Workflow", back_populates="edges")
+
+    # Composite foreign key to reference the specific node in the SAME workflow
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ['workflow_id', 'source_node_id'],
+            ['workflow_nodes.workflow_id', 'workflow_nodes.id'],
+            name="fk_workflow_edges_source_node"
+        ),
+        ForeignKeyConstraint(
+            ['workflow_id', 'target_node_id'],
+            ['workflow_nodes.workflow_id', 'workflow_nodes.id'],
+            name="fk_workflow_edges_target_node"
+        ),
+    )
 
 class WorkflowRun(Base):
     __tablename__ = "workflow_runs"
@@ -105,6 +122,7 @@ class AuditLog(Base):
     action = Column(String)
     entity_type = Column(String)
     entity_id = Column(Integer)
+    details = Column(Text, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
 
 class DriftAlert(Base):

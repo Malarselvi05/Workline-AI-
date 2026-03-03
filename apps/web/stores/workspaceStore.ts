@@ -1,13 +1,16 @@
 import { create } from 'zustand';
-import { listWorkflows, Workflow } from '@/lib/api';
+import { listWorkflows, getMe, Workflow, User } from '@/lib/api';
 
 interface WorkspaceState {
+    user: User | null;
     workflows: Workflow[];
     activeWorkflowId: number | null;
     activeTab: 'dashboard' | 'automate' | 'workflow';
     sidebarCollapsed: boolean;
     loading: boolean;
 
+    setUser: (user: User | null) => void;
+    fetchUser: () => Promise<void>;
     setActiveTab: (tab: 'dashboard' | 'automate' | 'workflow') => void;
     setActiveWorkflow: (id: number | null) => void;
     addWorkflow: (workflow: Workflow) => void;
@@ -16,14 +19,27 @@ interface WorkspaceState {
     updateWorkflowStatus: (id: number, status: 'draft' | 'active' | 'archived') => void;
     toggleSidebar: () => void;
     fetchWorkflows: () => Promise<void>;
+    reset: () => void;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
+    user: null,
     workflows: [],
     activeWorkflowId: null,
     activeTab: 'dashboard',
     sidebarCollapsed: false,
     loading: false,
+
+    setUser: (user) => set({ user }),
+
+    fetchUser: async () => {
+        try {
+            const user = await getMe();
+            set({ user });
+        } catch (err) {
+            console.error('Failed to fetch current user:', err);
+        }
+    },
 
     setActiveTab: (tab) => set({ activeTab: tab }),
 
@@ -69,4 +85,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
             set({ loading: false });
         }
     },
+
+    reset: () => set({
+        user: null,
+        workflows: [],
+        activeWorkflowId: null,
+        activeTab: 'dashboard',
+        loading: false
+    }),
 }));

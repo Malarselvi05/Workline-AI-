@@ -3,6 +3,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 class NodeData(BaseModel):
+    label: Optional[str] = ""
     config: Optional[Dict[str, Any]] = {}
 
 class NodeSchema(BaseModel):
@@ -25,6 +26,7 @@ class WorkflowBase(BaseModel):
 class WorkflowCreate(WorkflowBase):
     nodes: List[NodeSchema] = []
     edges: List[EdgeSchema] = []
+    parent_version_id: Optional[int] = None
 
 class WorkflowResponse(WorkflowBase):
     id: int
