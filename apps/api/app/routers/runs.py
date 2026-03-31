@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.db.session import get_db
 from app.models import models
-from app.auth.dependencies import get_current_active_user, require_viewer, require_editor
+from app.auth.dependencies import get_current_user, require_viewer, require_editor
 from app.core.tasks import execute_workflow_task
 import logging
 
@@ -17,7 +17,7 @@ async def trigger_run(
     is_sandbox: bool = False,
     initial_input: Optional[dict] = None,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     """
     Trigger a new execution of a workflow.
@@ -28,13 +28,13 @@ async def trigger_run(
         
     try:
         # Trigger Celery task
-        task = execute_workflow_task.delay(workflow_id, initial_input, is_sandbox)
+        task = execute_workflow_task.delay(workflow_id, initial_input, is_sandbox, current_user.org_id)
         return {"task_id": task.id, "status": "queued", "mode": "background"}
     except Exception as e:
         logger.warning(f"Celery not available, running synchronously: {e}")
         # Synchronous fallback for dev environments without Redis/Worker
         from app.core.tasks import run_workflow_async
-        result = await run_workflow_async(workflow_id, initial_input, is_sandbox)
+        result = await run_workflow_async(workflow_id, initial_input, is_sandbox, current_user.org_id)
         return result
 
 @router.get("/workflows/{workflow_id}/runs")

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import AppContent from "@/components/layout/AppContent";
+import QueryProvider from "@/components/providers/QueryProvider";
 
 export const metadata: Metadata = {
   title: "WorkLine AI — Agentic Automation Platform",
@@ -15,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body style={{ background: 'var(--bg-primary)', margin: 0 }}>
-        <AppContent>{children}</AppContent>
+        <QueryProvider>
+          <AppContent>{children}</AppContent>
+        </QueryProvider>
       </body>
     </html>
   );

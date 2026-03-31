@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.schemas.workflow import WorkflowCreate, WorkflowResponse, WorkflowDetailResponse, NodeSchema, EdgeSchema, WorkflowBase
 from typing import List, Optional
-from app.auth.dependencies import get_current_active_user, require_viewer, require_editor
+from app.auth.dependencies import get_current_user, require_viewer, require_editor
 from app.db.session import get_db
 from app.models import models
 from app.services.audit import log_action
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/workflows", tags=["workflows"])
 async def create_workflow(
     workflow_data: WorkflowCreate, 
     db: Session = Depends(get_db), 
-    current_user: models.User = Depends(get_current_active_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     # Calculate version and handle lineage
     version_num = 1
@@ -339,12 +339,12 @@ async def run_workflow(
         
     try:
         # Try background task
-        task = execute_workflow_task.delay(workflow_id)
+        task = execute_workflow_task.delay(workflow_id, org_id=current_user.org_id)
         return {"task_id": task.id, "status": "queued", "mode": "background"}
     except Exception as e:
         logger.warning(f"Celery not available, running synchronously: {e}")
         # Synchronous fallback
-        result = execute_workflow_task(workflow_id)
+        result = execute_workflow_task(workflow_id, org_id=current_user.org_id)
         return {"status": "completed", "mode": "synchronous", "result": result}
 
 @router.get("/{workflow_id}/runs")

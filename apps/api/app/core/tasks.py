@@ -12,18 +12,19 @@ from workflow_engine.engine import WorkflowEngine
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 @celery_app.task(name="app.core.tasks.execute_workflow_task")
-def execute_workflow_task(workflow_id: int, initial_input: Dict[str, Any] = None, is_sandbox: bool = False):
+def execute_workflow_task(workflow_id: int, initial_input: Dict[str, Any] = None, is_sandbox: bool = False, org_id: int = None):
     """
     Celery task to execute a workflow.
     Wraps the async execution in asyncio.run.
     """
-    return asyncio.run(run_workflow_async(workflow_id, initial_input, is_sandbox))
+    return asyncio.run(run_workflow_async(workflow_id, initial_input, is_sandbox, org_id))
 
-async def run_workflow_async(workflow_id: int, initial_input: Dict[str, Any] = None, is_sandbox: bool = False):
+async def run_workflow_async(workflow_id: int, initial_input: Dict[str, Any] = None, is_sandbox: bool = False, org_id: int = None):
     db = SessionLocal()
     # Create the run record
     run = models.WorkflowRun(
         workflow_id=workflow_id,
+        org_id=org_id,
         status="running",
         started_at=datetime.utcnow()
     )
@@ -127,8 +128,8 @@ async def run_workflow_async(workflow_id: int, initial_input: Dict[str, Any] = N
         final_status = results_data["status"]
         
         # Determine final status
-        if final_status == "waiting":
-            run.status = "waiting"
+        if final_status == "awaiting_review":
+            run.status = "awaiting_review"
         elif engine.failed_nodes:
             run.status = "failed"
         else:
@@ -137,6 +138,14 @@ async def run_workflow_async(workflow_id: int, initial_input: Dict[str, Any] = N
         run.ended_at = datetime.utcnow()
         run.logs = {"results": results, "engine_status": final_status}
         db.commit()
+
+        # Phase 2: Drift Detection
+        if not is_sandbox:
+            try:
+                from app.services.drift import check_workflow_drift
+                await check_workflow_drift(db, workflow_id, org_id)
+            except Exception as drift_error:
+                print(f"Drift check failed: {drift_error}")
         
         return {"status": run.status, "run_id": run_id, "results": results}
         

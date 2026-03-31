@@ -21,8 +21,10 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
-import { getWorkflow, runWorkflow, rollbackWorkflow, getWorkflowVersions, Workflow, WorkflowDetail } from '@/lib/api';
+import { getWorkflow, runWorkflow, rollbackWorkflow, getWorkflowVersions, Workflow, WorkflowDetail, approveNode, rejectNode } from '@/lib/api';
 import DeployModal from '@/components/canvas/DeployModal';
+import { useQuery } from '@tanstack/react-query';
+import { getWorkflowRuns, getRunDetail } from '@/lib/api';
 
 const TABS = [
     { id: 'runs', label: 'Runs', icon: Activity },
@@ -32,11 +34,19 @@ const TABS = [
     { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
-const MOCK_DETAIL_RUNS = [
-    { id: 1, status: 'completed', startedAt: '2026-03-03 10:01:23', duration: '3.1s', blocks: 3, triggeredBy: 'Admin' },
-    { id: 2, status: 'completed', startedAt: '2026-03-03 09:45:12', duration: '5.4s', blocks: 3, triggeredBy: 'Admin' },
-    { id: 3, status: 'failed', startedAt: '2026-03-03 08:30:00', duration: '1.2s', blocks: 2, triggeredBy: 'API' },
-];
+// MOCK_DETAIL_RUNS removed
+
+const statusBadge = (status: string) => {
+    switch (status) {
+        case 'completed': return 'badge-success';
+        case 'failed': return 'badge-danger';
+        case 'running': return 'badge-info';
+        case 'awaiting_review': return 'badge-warning';
+        case 'waiting': return 'badge-warning';
+        case 'skipped': return 'badge-neutral';
+        default: return 'badge-neutral';
+    }
+};
 
 export default function WorkflowDetailPage() {
     const params = useParams();
@@ -48,6 +58,7 @@ export default function WorkflowDetailPage() {
     const [rolling, setRolling] = useState<number | null>(null);
     const [deployModalOpen, setDeployModalOpen] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const [selectedRunId, setSelectedRunId] = useState<number | null>(null);
 
     // Real API data
     const [workflowDetail, setWorkflowDetail] = useState<WorkflowDetail | null>(null);
@@ -120,6 +131,44 @@ export default function WorkflowDetailPage() {
             showToast(`Rollback failed: ${err instanceof Error ? err.message : 'Unknown'}`, 'error');
         }
         setRolling(null);
+    };
+
+    // ── Runs Data ─────────────────────────────────────────────────────────────
+    const { data: runs, isLoading: runsLoading, refetch: refetchRuns } = useQuery({
+        queryKey: ['workflow', workflowId, 'runs'],
+        queryFn: () => getWorkflowRuns(workflowId),
+        enabled: !!workflowId,
+    });
+
+    const { data: runDetail, isLoading: detailLoading, refetch: refetchRunDetail } = useQuery({
+        queryKey: ['run', selectedRunId],
+        queryFn: () => getRunDetail(selectedRunId!),
+        enabled: !!selectedRunId,
+    });
+
+    // ── Approval Handlers ────────────────────────────────────────────────────
+    const handleApprove = async (nodeId: string) => {
+        if (!selectedRunId) return;
+        try {
+            await approveNode(selectedRunId, nodeId);
+            showToast('Decision approved! Workflow is resuming...', 'success');
+            await refetchRunDetail();
+            await refetchRuns();
+        } catch (err) {
+            showToast('Failed to approve', 'error');
+        }
+    };
+
+    const handleReject = async (nodeId: string) => {
+        if (!selectedRunId) return;
+        try {
+            await rejectNode(selectedRunId, nodeId);
+            showToast('Decision rejected. Workflow failed.', 'success');
+            await refetchRunDetail();
+            await refetchRuns();
+        } catch (err) {
+            showToast('Failed to reject', 'error');
+        }
     };
 
     return (
@@ -211,35 +260,134 @@ export default function WorkflowDetailPage() {
             <div className="animate-fade-in">
                 {/* RUNS TAB */}
                 {activeTab === 'runs' && (
-                    <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '1px solid var(--border-default)' }}>
-                                    {['Run ID', 'Status', 'Started At', 'Duration', 'Blocks', 'Triggered By'].map((h) => (
-                                        <th key={h} style={{ padding: '10px 16px', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textAlign: 'left', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                            {h}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {MOCK_DETAIL_RUNS.map((run) => (
-                                    <tr key={run.id} style={{ borderBottom: '1px solid var(--border-default)' }}>
-                                        <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 500 }}>#{run.id}</td>
-                                        <td style={{ padding: '12px 16px' }}>
-                                            <span className={`badge ${run.status === 'completed' ? 'badge-success' : 'badge-danger'}`}>
-                                                {run.status === 'completed' ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
-                                                {run.status}
-                                            </span>
-                                        </td>
-                                        <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>{run.startedAt}</td>
-                                        <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>{run.duration}</td>
-                                        <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>{run.blocks}</td>
-                                        <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>{run.triggeredBy}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    <div style={{ display: 'grid', gridTemplateColumns: selectedRunId ? '350px 1fr' : '1fr', gap: 20 }}>
+                        <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+                            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-default)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h3 style={{ fontSize: 13, fontWeight: 600 }}>Run History</h3>
+                                <button className="btn-ghost" onClick={() => refetchRuns()} style={{ padding: 4 }}>
+                                    <RefreshCw size={12} />
+                                </button>
+                            </div>
+                            {runsLoading ? (
+                                <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>
+                            ) : runs?.length === 0 ? (
+                                <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>No runs yet</div>
+                            ) : (
+                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                    <thead>
+                                        <tr style={{ borderBottom: '1px solid var(--border-default)' }}>
+                                            {['ID', 'Status', 'Started'].map((h) => (
+                                                <th key={h} style={{ padding: '8px 12px', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textAlign: 'left', textTransform: 'uppercase' }}>
+                                                    {h}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {runs?.map((run) => (
+                                            <tr 
+                                                key={run.id} 
+                                                onClick={() => setSelectedRunId(run.id)}
+                                                style={{ 
+                                                    borderBottom: '1px solid var(--border-default)', 
+                                                    cursor: 'pointer',
+                                                    background: selectedRunId === run.id ? 'rgba(99,102,241,0.08)' : 'transparent'
+                                                }}
+                                            >
+                                                <td style={{ padding: '10px 12px', fontSize: 12, fontWeight: 500 }}>#{run.id}</td>
+                                                <td style={{ padding: '10px 12px' }}>
+                                                    <span className={`badge ${statusBadge(run.status)}`} style={{ fontSize: 9, padding: '2px 6px' }}>
+                                                        {run.status}
+                                                    </span>
+                                                </td>
+                                                <td style={{ padding: '10px 12px', fontSize: 11, color: 'var(--text-secondary)' }}>
+                                                    {new Date(run.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+
+                        {selectedRunId && (
+                            <div className="glass-card animate-fade-in" style={{ padding: 20 }}>
+                                {detailLoading ? (
+                                    <div style={{ textAlign: 'center', padding: 40 }}>Loading run details...</div>
+                                ) : runDetail ? (
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+                                            <div>
+                                                <h3 style={{ fontSize: 16, fontWeight: 700 }}>Run #{selectedRunId}</h3>
+                                                <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                                                    Executed on {new Date(runDetail.run.started_at).toLocaleString()}
+                                                </p>
+                                            </div>
+                                            <button className="btn-secondary" onClick={() => setSelectedRunId(null)} style={{ padding: '4px 8px' }}>Close</button>
+                                        </div>
+
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                            <h4 style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Execution Timeline</h4>
+                                            {runDetail.node_states.map((state: any, idx: number) => (
+                                                <div key={state.id} style={{ display: 'flex', gap: 12, position: 'relative' }}>
+                                                    {/* Vertical Line */}
+                                                    {idx < runDetail.node_states.length - 1 && (
+                                                        <div style={{ position: 'absolute', top: 16, left: 7, bottom: -16, width: 2, background: 'var(--border-default)' }}></div>
+                                                    )}
+                                                    
+                                                    <div style={{ 
+                                                        width: 16, height: 16, borderRadius: '50%', 
+                                                        background: state.status === 'completed' ? '#10b981' : state.status === 'failed' ? '#ef4444' : 'var(--border-default)',
+                                                        zIndex: 1, marginTop: 2, border: '3px solid var(--bg-card)'
+                                                    }}></div>
+                                                    
+                                                    <div style={{ flex: 1, paddingBottom: 16 }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                            <span style={{ fontSize: 13, fontWeight: 600 }}>{workflowDetail?.nodes.find(n => n.id === state.node_id)?.data.label || state.node_id}</span>
+                                                            <span className={`badge ${statusBadge(state.status)}`} style={{ fontSize: 9 }}>{state.status}</span>
+                                                        </div>
+                                                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                                                            {state.started_at && new Date(state.started_at).toLocaleTimeString()} 
+                                                            {state.ended_at && state.started_at && ` · ${( (new Date(state.ended_at).getTime() - new Date(state.started_at).getTime()) / 1000 ).toFixed(1)}s`}
+                                                        </div>
+                                                        {state.error && (
+                                                            <div style={{ marginTop: 8, padding: 8, background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.1)', borderRadius: 4, color: '#ef4444', fontSize: 11, fontFamily: 'monospace' }}>
+                                                                {state.error}
+                                                            </div>
+                                                        )}
+                                                        {state.status === 'awaiting_review' && (
+                                                            <div style={{ 
+                                                                marginTop: 12, padding: '14px', 
+                                                                background: 'rgba(245, 158, 11, 0.05)', 
+                                                                border: '1px solid rgba(245, 158, 11, 0.2)', 
+                                                                borderRadius: 8 
+                                                            }}>
+                                                                <p style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b', marginBottom: 10 }}>Action Required: Human Review</p>
+                                                                <div style={{ display: 'flex', gap: 8 }}>
+                                                                    <button className="btn-primary" onClick={() => handleApprove(state.node_id)} style={{ flex: 1, background: '#10b981', fontSize: 11 }}>Approve & Resume</button>
+                                                                    <button className="btn-secondary" onClick={() => handleReject(state.node_id)} style={{ flex: 1, color: '#ef4444', borderColor: '#ef4444', fontSize: 11 }}>Reject</button>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {state.output_json && (
+                                                            <details style={{ marginTop: 6 }}>
+                                                                <summary style={{ fontSize: 11, color: 'var(--accent-primary)', cursor: 'pointer' }}>View Output</summary>
+                                                                <pre style={{ marginTop: 4, padding: 8, background: 'var(--bg-primary)', borderRadius: 4, fontSize: 10, overflowX: 'auto' }}>
+                                                                    {JSON.stringify(state.output_json, null, 2)}
+                                                                </pre>
+                                                            </details>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div style={{ textAlign: 'center', padding: 40 }}>Run details not found</div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
 

@@ -9,6 +9,28 @@ logger = logging.getLogger(__name__)
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
+class ConnectionManager:
+    """
+    A simple manager to handle Redis pub/sub publishing.
+    """
+    def __init__(self):
+        self._redis = None
+
+    async def get_redis(self):
+        if self._redis is None:
+            self._redis = await async_redis.from_url(REDIS_URL)
+        return self._redis
+
+    async def broadcast_to_run(self, run_id: int, message: dict):
+        redis = await self.get_redis()
+        await redis.publish(f"run_status:{run_id}", json.dumps(message))
+
+    async def broadcast_to_org(self, org_id: int, message: dict):
+        redis = await self.get_redis()
+        await redis.publish(f"workspace_events:{org_id}", json.dumps(message))
+
+manager = ConnectionManager()
+
 router = APIRouter(prefix="/ws", tags=["websocket"])
 
 @router.websocket("/runs/{run_id}")

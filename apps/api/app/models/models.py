@@ -80,6 +80,7 @@ class WorkflowEdge(Base):
 class WorkflowRun(Base):
     __tablename__ = "workflow_runs"
     id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(Integer, ForeignKey("organisations.id"), nullable=True)
     workflow_id = Column(Integer, ForeignKey("workflows.id"))
     status = Column(String)  # pending, running, completed, failed, awaiting_review
     started_at = Column(DateTime, default=datetime.utcnow)
@@ -128,6 +129,7 @@ class AuditLog(Base):
 class DriftAlert(Base):
     __tablename__ = "drift_alerts"
     id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(Integer, ForeignKey("organisations.id"), nullable=True)
     workflow_id = Column(Integer, ForeignKey("workflows.id"))
     metric = Column(String)
     baseline_val = Column(Float)

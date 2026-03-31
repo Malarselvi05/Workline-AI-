@@ -169,9 +169,9 @@ class WorkflowEngine:
             self.failed_nodes.add(node_id)
             await self.emit_status(node_id, "failed", error=error)
         elif isinstance(output, dict) and output.get("status") == "waiting_for_human":
-            self.node_statuses[node_id] = "waiting"
+            self.node_statuses[node_id] = "awaiting_review"
             self.waiting_nodes.add(node_id)
-            await self.emit_status(node_id, "waiting", output=output)
+            await self.emit_status(node_id, "awaiting_review", output=output)
         else:
             self.node_statuses[node_id] = "completed"
             self.node_outputs[node_id] = output
@@ -235,5 +235,5 @@ class WorkflowEngine:
             
         return {
             "outputs": self.node_outputs,
-            "status": "waiting" if self.waiting_nodes else ("failed" if self.failed_nodes else "completed")
+            "status": "awaiting_review" if self.waiting_nodes else ("failed" if self.failed_nodes else "completed")
         }

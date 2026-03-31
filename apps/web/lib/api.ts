@@ -109,6 +109,47 @@ export interface WorkflowRun {
     ended_at?: string;
 }
 
+export interface RunNodeState {
+    id: number;
+    run_id: number;
+    node_id: string;
+    status: string;
+    started_at: string;
+    ended_at?: string;
+    output_json?: any;
+    error?: string;
+}
+
+export interface RunDetail {
+    run: WorkflowRun;
+    node_states: RunNodeState[];
+}
+
+export interface DashboardSummary {
+    total_runs_week: number;
+    success_rate: number;
+    avg_duration: number;
+    active_drift_alerts: number;
+}
+
+export interface RecentRun {
+    id: number;
+    workflow_name: string;
+    triggered_by: string;
+    status: string;
+    started_at: string;
+    duration: number;
+}
+
+export interface DriftAlert {
+    id: number;
+    workflow_name: string;
+    metric: string;
+    baseline_val: number;
+    current_val: number;
+    created_at: string;
+}
+
 // ── Internal fetch wrapper ─────────────────────────────────────────────────
 
 function getAuthHeaders(): HeadersInit {
@@ -256,10 +297,38 @@ export async function getWorkflowRuns(id: number): Promise<WorkflowRun[]> {
     return request<WorkflowRun[]>(`/workflows/${id}/runs`);
 }
 
+export async function getRunDetail(runId: number): Promise<RunDetail> {
+    return request<RunDetail>(`/runs/${runId}`);
+}
+
+export async function approveNode(runId: number, nodeId: string): Promise<any> {
+    return request(`/runs/${runId}/nodes/${nodeId}/approve`, { method: 'POST' });
+}
+
+export async function rejectNode(runId: number, nodeId: string): Promise<any> {
+    return request(`/runs/${runId}/nodes/${nodeId}/reject`, { method: 'POST' });
+}
+
 export async function getWorkflowVersions(id: number): Promise<Workflow[]> {
     return request<Workflow[]>(`/workflows/${id}/versions`);
 }
 
 export async function rollbackWorkflow(workflowId: number, versionId: number): Promise<Workflow> {
     return request<Workflow>(`/workflows/${workflowId}/rollback/${versionId}`, { method: 'POST' });
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────
+
+export async function getDashboardSummary(): Promise<DashboardSummary> {
+    return request<DashboardSummary>('/api/dashboard/summary');
+}
+
+export async function getRecentRuns(): Promise<RecentRun[]> {
+    const data = await request<{ runs: RecentRun[] }>('/api/dashboard/recent-runs');
+    return data.runs;
+}
+
+export async function getDriftAlerts(): Promise<DriftAlert[]> {
+    const data = await request<{ alerts: DriftAlert[] }>('/api/dashboard/drift-alerts');
+    return data.alerts;
 }

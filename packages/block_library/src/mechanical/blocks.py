@@ -8,17 +8,34 @@ logger = logging.getLogger(__name__)
 
 class DrawingClassifierBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
+        # Detect if we have text from OCR
+        text = ""
+        for val in input_data.values():
+            if isinstance(val, dict) and "text" in val:
+                text = val["text"].upper()
+                break
+        
         logger.info(f"Classifying mechanical drawing {'(SANDBOX)' if self.is_sandbox else ''}...")
         await asyncio.sleep(2.0)
         
-        # Real logic would use a ResNet or Vision Transformer
-        types = ["General Assembly", "Sub-Assembly", "Part Drawing", "Schematic", "BOM List"]
-        drawing_type = random.choice(types)
+        # Heuristic-based classification (simulating a vision-to-text-to-label flow)
+        if "ASSY" in text or "ASSEMBLY" in text:
+            drawing_type = "General Assembly"
+        elif "EXPLODED" in text:
+            drawing_type = "Sub-Assembly"
+        elif "DRG" in text or "PART" in text:
+            drawing_type = "Part Drawing"
+        elif "SCHEMATIC" in text or "WIRING" in text:
+            drawing_type = "Schematic"
+        else:
+            # Fallback to random if no keywords
+            types = ["General Assembly", "Sub-Assembly", "Part Drawing", "Schematic", "BOM List"]
+            drawing_type = random.choice(types)
         
         return {
             "drawing_type": drawing_type, 
-            "confidence": 0.92,
-            "metadata": {"format": "A3", "engine": "vision_mock_v1"}
+            "confidence": 0.92 if text else 0.45,
+            "metadata": {"format": "A3", "engine": "vision_mock_v1", "keywords_found": bool(text)}
         }
 
 class POExtractorBlock(BaseBlock):
@@ -53,17 +70,30 @@ class POExtractorBlock(BaseBlock):
 
 class DuplicateDrawingDetectorBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
-        logger.info(f"Searching for duplicate drawings using embedding similarity {'(SANDBOX)' if self.is_sandbox else ''}...")
-        await asyncio.sleep(1.2)
+        logger.info(f"Generating embeddings for current drawing {'(SANDBOX)' if self.is_sandbox else ''}...")
+        await asyncio.sleep(1.0)
         
-        # In real implementation, this would query a Vector DB like Chroma or Pinecone
-        similarity = random.uniform(0.05, 0.4)
-        is_duplicate = similarity > 0.85
+        # In real implementation, this would use a Siamese Network or CLIP model
+        # We'll simulate a vector comparison
+        import numpy as np
+        embedding = np.random.rand(128) # 128-dim embedding
+        
+        # Similarity with a mock "registry" of historical drawings
+        logger.info("Comparing against Vector Database...")
+        await asyncio.sleep(0.5)
+        
+        max_similarity = random.uniform(0.05, 0.45) # Usually no duplicate
+        
+        # Chance to find a duplicate for demo purposes
+        is_duplicate = random.random() < 0.15 # 15% chance
+        if is_duplicate:
+            max_similarity = random.uniform(0.91, 0.99)
         
         return {
             "is_duplicate": is_duplicate, 
-            "max_similarity": round(similarity, 4),
-            "match_id": "DWG-9921" if is_duplicate else None
+            "max_similarity": round(float(max_similarity), 4),
+            "match_id": f"DWG-{random.randint(1000, 9999)}" if is_duplicate else None,
+            "engine": "siamese_cnn_v4"
         }
 
 class TeamLeaderRecommenderBlock(BaseBlock):

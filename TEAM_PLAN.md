@@ -233,69 +233,69 @@ These decisions must be made and committed before either member starts Phase 1:
 
 ### 🟦 Member J — Dashboard + Run Monitoring (Full-Stack)
 
-#### J5 — Dashboard (Full-Stack)
-- [ ] Add `GET /dashboard/summary` endpoint: total runs this week, success rate, avg duration, active drift alert count
-- [ ] Dashboard page (`app/dashboard/page.tsx`):
-  - Four KPI cards: Total Runs · Success Rate · Avg Processing Time · Active Drift Alerts
-  - Recent Runs table: workflow name · triggered by · status badge · started at · duration · actions
-  - Drift Alerts panel: workflow name · metric · baseline vs current · "View Workflow" · "Rollback" buttons
-- [ ] Wire Tanstack Query with auto-refetch every 30s
+#### J5 — Dashboard (Full-Stack) [x]
+- [x] Add `GET /dashboard/summary` endpoint: total runs this week, success rate, avg duration, active drift alert count
+- [x] Dashboard page (`app/dashboard/page.tsx`):
+  - [x] Four KPI cards: Total Runs · Success Rate · Avg Processing Time · Active Drift Alerts
+  - [x] Recent Runs table: workflow name · triggered by · status badge · started at · duration · actions
+  - [x] Drift Alerts panel: workflow name · metric · baseline vs current · "View Workflow" · "Rollback" buttons
+- [x] Wire Tanstack Query with auto-refetch every 30s
 
-#### J6 — Drift Detection (Full-Stack)
-- [ ] Create `services/drift.py`:
-  - After 100 successful runs: compute baseline embedding distribution for that workflow
-  - Every 50 runs: compute KL divergence vs baseline; if > 0.15 (configurable): create `DriftAlert` record
-  - Emit `drift_alert_fired` workspace WS event
-- [ ] Register Celery beat task: run drift check every hour
-- [ ] `GET /workflows/{id}/drift-alerts` endpoint
-- [ ] Drift badge on sidebar workflow tab (reads from workspace WS event)
-- [ ] Auto-update dashboard drift panel via WS (no page reload needed)
+#### J6 — Drift Detection (Full-Stack) [x]
+- [x] Create `services/drift.py`:
+  - [x] After 100 successful runs: compute baseline embedding distribution for that workflow
+  - [x] Every 50 runs: compute KL divergence vs baseline; if > 0.15 (configurable): create `DriftAlert` record
+  - [x] Emit `drift_alert_fired` workspace WS event
+- [x] Register Celery beat task: run drift check every hour
+- [x] `GET /workflows/{id}/drift-alerts` endpoint
+- [x] Drift badge on sidebar workflow tab (reads from workspace WS event)
+- [x] Auto-update dashboard drift panel via WS (no page reload needed)
 
-#### J7 — Advanced Run Detail UI (Frontend)
-- [ ] Run detail page: timeline view of node execution (which ran first, how long each took)
-- [ ] Per-node expandable: input data · output data · error message (if failed)
-- [ ] Download run log as JSON
+#### J7 — Advanced Run Detail UI (Frontend) [x]
+- [x] Run detail page: timeline view of node execution (which ran first, how long each took)
+- [x] Per-node expandable: input data · output data · error message (if failed)
+- [x] Download run log as JSON
 
 ---
 
 ### 🟩 Member M — Human Review + Versioning + ML Blocks (Full-Stack)
 
-#### M6 — Human Review Flow (Full-Stack)
-- [ ] `HumanReviewBlock` execution: on reaching this block, run's status set to `awaiting_review`, WS event emitted
-- [ ] Approval panel in Results sub-tab: shows input data, AI reasoning, Approve / Reject buttons
-- [ ] `POST /runs/{id}/nodes/{node_id}/approve` and `/reject` — resumes or fails the run
-- [ ] Canvas node badge shows `⏳ Awaiting Review` while paused; workspace WS fires notification badge on sidebar tab
+#### M6 — Human Review Flow (Full-Stack) [x]
+- [x] `HumanReviewBlock` execution: on reaching this block, run's status set to `awaiting_review`, WS event emitted
+- [x] Approval panel in Results sub-tab: shows input data, AI reasoning, Approve / Reject buttons
+- [x] `POST /runs/{id}/nodes/{node_id}/approve` and `/reject` — resumes or fails the run
+- [x] Canvas node badge shows `⏳ Awaiting Review` while paused; workspace WS fires notification badge on sidebar tab
 
-#### M7 — Versioning + Rollback (Full-Stack)
-- [ ] Implement version chain: on every `deploy`, new `Workflow` row created with `parent_version_id` → old version
-- [ ] `GET /workflows/{id}/versions` — full version history list
-- [ ] `POST /workflows/{id}/rollback/{version_id}` — restores that version's nodes/edges as a new draft
-- [ ] Generate node/edge diff between any two versions (changed / added / removed)
-- [ ] Version history list in Settings sub-tab; side-by-side diff canvas view (amber/blue/ghost highlights)
-- [ ] "Rollback to this version" button — calls rollback endpoint, refreshes canvas
+#### M7 — Versioning + Rollback (Full-Stack) [x]
+- [x] Implement version chain: on every `deploy`, new `Workflow` row created with `parent_version_id` → old version
+- [x] `GET /workflows/{id}/versions` — full version history list
+- [x] `POST /workflows/{id}/rollback/{version_id}` — restores that version's nodes/edges as a new draft
+- [x] Generate node/edge diff between any two versions (changed / added / removed)
+- [x] Version history list in Settings sub-tab; side-by-side diff canvas view (amber/blue/ghost highlights)
+- [x] "Rollback to this version" button — calls rollback endpoint, refreshes canvas
 
-#### M8 — ML Blocks + Embedding (Full-Stack)
-- [ ] Implement `RecommenderBlock`:
-  - XGBoost model scoring candidates against job requirements
-  - Training Celery task: `POST /models/recommender/train`
-  - `GET /models/recommender/metrics`
-  - Training trigger button in block Configure panel; poll metrics every 5s during training
-- [ ] Implement `DuplicateDrawingDetectorBlock` (real):
-  - Compute embeddings using `text-embedding-3-large` (via LiteLLM) or `BAAI/bge-large-en-v1.5`
-  - Cosine similarity against stored embeddings in `files.metadata_json`
-  - SHA-256 hash check first (exact duplicate, no embedding needed)
-- [ ] `FileUpload` endpoint: `POST /files/upload` → stores to MinIO, saves hash + metadata to DB
+#### M8 — ML Blocks + Embedding (Full-Stack) [x]
+- [x] Implement `RecommenderBlock`:
+  - [x] XGBoost model scoring candidates against job requirements
+  - [x] Training Celery task: `POST /models/recommender/train`
+  - [x] `GET /models/recommender/metrics`
+  - [x] Training trigger button in block Configure panel; poll metrics every 5s during training
+- [x] Implement `DuplicateDrawingDetectorBlock` (real):
+  - [x] Compute embeddings using `text-embedding-3-large` (via LiteLLM) or `BAAI/bge-large-en-v1.5`
+  - [x] Cosine similarity against stored embeddings in `files.metadata_json`
+  - [x] SHA-256 hash check first (exact duplicate, no embedding needed)
+- [x] `FileUpload` endpoint: `POST /files/upload` → stores to MinIO, saves hash + metadata to DB
 
 ---
 
 ### 🔁 Phase 2 Integration Checkpoint
 
-- [ ] Human Review: run pauses at review node → approval panel appears → approve → run continues
-- [ ] Deploy → view version history → compare diff → rollback → canvas restored to old version
-- [ ] XGBoost training triggered → metrics appear in block Configure panel after training
-- [ ] Drift alert appears on dashboard automatically (simulate by inserting a test drift alert)
-- [ ] Editor cannot access org settings; Viewer cannot trigger runs or see Deploy
-- [ ] ✅ All P1 success criteria pass
+- [x] Human Review: run pauses at review node → approval panel appears → approve → run continues
+- [x] Deploy → view version history → compare diff → rollback → canvas restored to old version
+- [x] XGBoost training triggered → metrics appear in block Configure panel after training
+- [x] Drift alert appears on dashboard automatically (simulate by inserting a test drift alert)
+- [x] Editor cannot access org settings; Viewer cannot trigger runs or see Deploy
+- [x] ✅ All P1 success criteria pass
 
 ---
 

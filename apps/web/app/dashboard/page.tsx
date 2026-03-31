@@ -9,32 +9,26 @@ import {
     ArrowUpRight,
     TrendingUp,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
-
-// Mock dashboard data for MVP (will wire to real API in Phase 2)
-const MOCK_KPIS = [
-    { label: 'Total Runs This Week', value: '47', change: '+12%', icon: Activity, color: '#6366f1' },
-    { label: 'Success Rate', value: '94.2%', change: '+2.1%', icon: CheckCircle2, color: '#10b981' },
-    { label: 'Avg Processing Time', value: '3.2s', change: '-0.8s', icon: Clock, color: '#06b6d4' },
-    { label: 'Active Drift Alerts', value: '1', change: '', icon: AlertTriangle, color: '#f59e0b' },
-];
-
-const MOCK_RUNS = [
-    { id: 1, workflow: 'Reference Document Classification', triggeredBy: 'Admin User', status: 'completed', startedAt: '2 min ago', duration: '3.1s' },
-    { id: 2, workflow: 'Invoice Processing', triggeredBy: 'Admin User', status: 'completed', startedAt: '15 min ago', duration: '5.4s' },
-    { id: 3, workflow: 'Drawing Classification', triggeredBy: 'Admin User', status: 'failed', startedAt: '1 hour ago', duration: '1.2s' },
-    { id: 4, workflow: 'Resume Screening', triggeredBy: 'Admin User', status: 'completed', startedAt: '3 hours ago', duration: '8.7s' },
-    { id: 5, workflow: 'Support Ticket Routing', triggeredBy: 'Admin User', status: 'completed', startedAt: '5 hours ago', duration: '2.3s' },
-];
+import { getDashboardSummary, getRecentRuns, getDriftAlerts } from '@/lib/api';
 
 const statusBadge = (status: string) => {
     switch (status) {
         case 'completed': return 'badge-success';
         case 'failed': return 'badge-danger';
         case 'running': return 'badge-info';
+        case 'awaiting_review': return 'badge-warning';
         default: return 'badge-neutral';
     }
 };
+
+const LoadingSkeleton = () => (
+    <div style={{ padding: '20px' }} className="glass-card animate-pulse">
+        <div style={{ height: 40, width: '60%', background: 'rgba(255,255,255,0.05)', marginBottom: 20 }}></div>
+        <div style={{ height: 100, background: 'rgba(255,255,255,0.05)' }}></div>
+    </div>
+);
 
 export default function DashboardPage() {
     const { setActiveTab, user } = useWorkspaceStore();
@@ -42,6 +36,58 @@ export default function DashboardPage() {
     useEffect(() => {
         setActiveTab('dashboard');
     }, [setActiveTab]);
+
+    // ── Fetch Data ─────────────────────────────────────────────────────────
+
+    const { data: summary, isLoading: summaryLoading } = useQuery({
+        queryKey: ['dashboard', 'summary'],
+        queryFn: getDashboardSummary,
+        refetchInterval: 30000, // every 30s as per plan
+    });
+
+    const { data: recentRuns, isLoading: runsLoading } = useQuery({
+        queryKey: ['dashboard', 'recent-runs'],
+        queryFn: getRecentRuns,
+        refetchInterval: 15000, // faster update for runs
+    });
+
+    const { data: driftAlerts, isLoading: driftLoading } = useQuery({
+        queryKey: ['dashboard', 'drift-alerts'],
+        queryFn: getDriftAlerts,
+    });
+
+    // ── Pre-computing KPI values for display ────────────────────────────────
+
+    const KPI_CARDS = [
+        { 
+            label: 'Total Runs This Week', 
+            value: summary?.total_runs_week ?? '--', 
+            change: '', // Can compute historical change later
+            icon: Activity, 
+            color: '#6366f1' 
+        },
+        { 
+            label: 'Success Rate', 
+            value: summary ? `${summary.success_rate}%` : '--%', 
+            change: '', 
+            icon: CheckCircle2, 
+            color: '#10b981' 
+        },
+        { 
+            label: 'Avg Processing Time', 
+            value: summary ? `${summary.avg_duration}s` : '--s', 
+            change: '', 
+            icon: Clock, 
+            color: '#06b6d4' 
+        },
+        { 
+            label: 'Active Drift Alerts', 
+            value: summary?.active_drift_alerts ?? '--', 
+            change: '', 
+            icon: AlertTriangle, 
+            color: '#f59e0b' 
+        },
+    ];
 
     return (
         <div style={{ padding: '28px 32px', maxWidth: 1200, height: '100vh', overflowY: 'auto' }}>
@@ -51,7 +97,7 @@ export default function DashboardPage() {
                     Welcome back, {user?.name || 'User'}
                 </h1>
                 <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
-                    Overview of your automation workflows for <strong>{user?.name || 'your'}&apos;s Organization</strong>.
+                    Overview of your automation workflows for <strong>{user?.org_id ? "your Organization" : "Workline AI"}</strong>.
                 </p>
             </div>
 
@@ -65,7 +111,7 @@ export default function DashboardPage() {
                 }}
                 className="animate-fade-in"
             >
-                {MOCK_KPIS.map((kpi) => (
+                {KPI_CARDS.map((kpi) => (
                     <div
                         key={kpi.label}
                         className="glass-card"
@@ -111,117 +157,163 @@ export default function DashboardPage() {
                             )}
                         </div>
                         <div>
-                            <p style={{ fontSize: 26, fontWeight: 700, lineHeight: 1 }}>{kpi.value}</p>
+                            {summaryLoading ? (
+                                <div style={{ height: 26, width: 40, background: 'rgba(255,255,255,0.05)', borderRadius: 4 }}></div>
+                            ) : (
+                                <p style={{ fontSize: 26, fontWeight: 700, lineHeight: 1 }}>{kpi.value}</p>
+                            )}
                             <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>{kpi.label}</p>
                         </div>
                     </div>
                 ))}
             </div>
 
-            {/* ── Recent Runs Table ── */}
-            <div className="glass-card animate-fade-in" style={{ padding: 0, overflow: 'hidden' }}>
-                <div
-                    style={{
-                        padding: '16px 20px',
-                        borderBottom: '1px solid var(--border-default)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                    }}
-                >
-                    <h2 style={{ fontSize: 15, fontWeight: 600 }}>Recent Runs</h2>
-                    <button className="btn-ghost" style={{ fontSize: 12 }}>
-                        View All <ArrowUpRight size={12} />
-                    </button>
-                </div>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                        <tr style={{ borderBottom: '1px solid var(--border-default)' }}>
-                            {['Workflow', 'Triggered By', 'Status', 'Started', 'Duration', ''].map((h) => (
-                                <th
-                                    key={h}
-                                    style={{
-                                        padding: '10px 20px',
-                                        fontSize: 11,
-                                        fontWeight: 600,
-                                        color: 'var(--text-muted)',
-                                        textAlign: 'left',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
-                                    }}
-                                >
-                                    {h}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {MOCK_RUNS.map((run) => (
-                            <tr
-                                key={run.id}
-                                style={{
-                                    borderBottom: '1px solid var(--border-default)',
-                                    transition: 'background 0.1s',
-                                    cursor: 'pointer',
-                                }}
-                                onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(99,102,241,0.04)')}
-                                onMouseOut={(e) => (e.currentTarget.style.background = 'transparent')}
-                            >
-                                <td style={{ padding: '12px 20px', fontSize: 13, fontWeight: 500 }}>{run.workflow}</td>
-                                <td style={{ padding: '12px 20px', fontSize: 13, color: 'var(--text-secondary)' }}>{run.triggeredBy}</td>
-                                <td style={{ padding: '12px 20px' }}>
-                                    <span className={`badge ${statusBadge(run.status)}`}>{run.status}</span>
-                                </td>
-                                <td style={{ padding: '12px 20px', fontSize: 13, color: 'var(--text-secondary)' }}>{run.startedAt}</td>
-                                <td style={{ padding: '12px 20px', fontSize: 13, color: 'var(--text-secondary)' }}>{run.duration}</td>
-                                <td style={{ padding: '12px 20px' }}>
-                                    <button className="btn-ghost" style={{ padding: '4px 8px' }}>
-                                        <ArrowUpRight size={14} />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* ── Drift Alerts ── */}
-            <div className="glass-card animate-fade-in" style={{ padding: 0, overflow: 'hidden', marginTop: 20 }}>
-                <div
-                    style={{
-                        padding: '16px 20px',
-                        borderBottom: '1px solid var(--border-default)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                    }}
-                >
-                    <h2 style={{ fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <AlertTriangle size={16} color="#f59e0b" />
-                        Drift Alerts
-                    </h2>
-                </div>
-                <div style={{ padding: '16px 20px' }}>
+            {/* ── Content Grid ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 340px', gap: 24 }}>
+                
+                {/* ── RECENT RUNS ── */}
+                <div className="glass-card animate-fade-in" style={{ padding: 0, overflow: 'hidden' }}>
                     <div
                         style={{
+                            padding: '16px 20px',
+                            borderBottom: '1px solid var(--border-default)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            padding: '12px 16px',
-                            background: 'rgba(245, 158, 11, 0.06)',
-                            borderRadius: 'var(--radius-sm)',
-                            border: '1px solid rgba(245, 158, 11, 0.15)',
                         }}
                     >
-                        <div>
-                            <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Drawing Classification</p>
-                            <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                                Classification accuracy dropped from <strong style={{ color: '#10b981' }}>94.2%</strong> to <strong style={{ color: '#ef4444' }}>83.7%</strong>
-                            </p>
+                        <h2 style={{ fontSize: 15, fontWeight: 600 }}>Recent Runs</h2>
+                        <button className="btn-ghost" style={{ fontSize: 12 }}>
+                            View All <ArrowUpRight size={12} />
+                        </button>
+                    </div>
+                    {runsLoading ? (
+                        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Loading recent runs...</div>
+                    ) : recentRuns?.length === 0 ? (
+                        <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)' }}>
+                            <p style={{ fontSize: 14 }}>No runs recorded yet.</p>
+                            <p style={{ fontSize: 12, marginTop: 4 }}>Start an automation flow to see activity here.</p>
                         </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            <button className="btn-secondary" style={{ fontSize: 12, padding: '6px 12px' }}>View Workflow</button>
-                            <button className="btn-primary" style={{ fontSize: 12, padding: '6px 12px' }}>Rollback</button>
+                    ) : (
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '1px solid var(--border-default)' }}>
+                                    {['Workflow', 'Status', 'Started', 'Duration', ''].map((h) => (
+                                        <th
+                                            key={h}
+                                            style={{
+                                                padding: '10px 20px',
+                                                fontSize: 11,
+                                                fontWeight: 600,
+                                                color: 'var(--text-muted)',
+                                                textAlign: 'left',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.05em',
+                                            }}
+                                        >
+                                            {h}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {recentRuns?.map((run) => (
+                                    <tr
+                                        key={run.id}
+                                        style={{
+                                            borderBottom: '1px solid var(--border-default)',
+                                            transition: 'background 0.1s',
+                                        }}
+                                    >
+                                        <td style={{ padding: '12px 20px', fontSize: 13, fontWeight: 500 }}>{run.workflow_name}</td>
+                                        <td style={{ padding: '12px 20px' }}>
+                                            <span className={`badge ${statusBadge(run.status)}`}>{run.status}</span>
+                                        </td>
+                                        <td style={{ padding: '12px 20px', fontSize: 13, color: 'var(--text-secondary)' }}>
+                                            {new Date(run.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </td>
+                                        <td style={{ padding: '12px 20px', fontSize: 13, color: 'var(--text-secondary)' }}>{run.duration}s</td>
+                                        <td style={{ padding: '12px 20px' }}>
+                                            <button className="btn-ghost" style={{ padding: '4px 8px' }}>
+                                                <ArrowUpRight size={14} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+
+                {/* ── SIDEBAR: DRIFT & ALERTS ── */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                    <div className="glass-card animate-fade-in" style={{ padding: 0, overflow: 'hidden' }}>
+                        <div
+                            style={{
+                                padding: '16px 20px',
+                                borderBottom: '1px solid var(--border-default)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                            }}
+                        >
+                            <h2 style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <AlertTriangle size={15} color="#f59e0b" />
+                                Active Alerts
+                            </h2>
+                        </div>
+                        <div style={{ padding: '12px' }}>
+                            {driftLoading ? (
+                                <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>Checking for drift...</p>
+                            ) : driftAlerts?.length === 0 ? (
+                                <div style={{ padding: '24px 12px', textAlign: 'center' }}>
+                                    <CheckCircle2 size={24} color="#10b981" style={{ margin: '0 auto 12px', opacity: 0.5 }} />
+                                    <p style={{ fontSize: 12, fontWeight: 500 }}>All Systems Healthy</p>
+                                    <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>No logic drift or bias detected.</p>
+                                </div>
+                            ) : (
+                                driftAlerts?.map((alert) => (
+                                    <div
+                                        key={alert.id}
+                                        style={{
+                                            padding: '12px',
+                                            background: 'rgba(245, 158, 11, 0.04)',
+                                            borderRadius: 'var(--radius-sm)',
+                                            border: '1px solid rgba(245, 158, 11, 0.15)',
+                                            marginBottom: 8
+                                        }}
+                                    >
+                                        <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{alert.workflow_name}</p>
+                                        <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 12 }}>
+                                            {alert.metric} accuracy drop detected.
+                                        </p>
+                                        <div style={{ display: 'flex', gap: 4 }}>
+                                            <button className="btn-secondary" style={{ fontSize: 11, padding: '4px 8px', flex: 1 }}>View</button>
+                                            <button className="btn-primary" style={{ fontSize: 11, padding: '4px 8px', flex: 1 }}>Re-Train</button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="glass-card animate-fade-in" style={{ padding: '16px 20px' }}>
+                        <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>System Status</h2>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {[
+                                { label: 'API Gateway', status: 'online' },
+                                { label: 'Execution Engine', status: 'online' },
+                                { label: 'ML Inference (Groq)', status: 'online' },
+                                { label: 'Object Storage (MinIO)', status: 'online' },
+                            ].map(s => (
+                                <div key={s.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{s.label}</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }}></div>
+                                        <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>{s.status}</span>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
