@@ -76,6 +76,18 @@ BLOCK_REGISTRY: Dict[str, BlockDefinition] = {
             BlockConfigField(name="fields", type="string", label="Field names (comma-separated)", required=True),
         ],
     ),
+    "scheduled_trigger": BlockDefinition(
+        type="scheduled_trigger", category=BlockCategory.INPUT,
+        label="Scheduled Trigger", icon="Clock",
+        description="Fires the workflow automatically on a cron schedule (e.g. '0 9 * * 1-5' = weekdays at 9 AM)",
+        input_types=[], output_type="json",
+        allow_retry=False, max_retries=0,
+        config_fields=[
+            BlockConfigField(name="cron_expression", type="string", label="Cron Expression", required=True,
+                             default="0 9 * * *"),
+            BlockConfigField(name="timezone", type="string", label="Timezone", default="UTC"),
+        ],
+    ),
 
     # ── Extract ───────────────────────────────────────────────────────────────
     "ocr": BlockDefinition(

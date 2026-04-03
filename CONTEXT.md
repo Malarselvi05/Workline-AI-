@@ -1,7 +1,7 @@
 > **Purpose**: Running state-of-the-codebase document for both human devs and AI assistants.
 > **Rule**: Every time you make significant code changes, update the relevant section of this file.
 > **Team Plan**: See [`TEAM_PLAN.md`](./TEAM_PLAN.md) for the full phase-by-phase checklist for Member J and Member M.
-> **Last Updated**: 2026-03-03 (Phase 1 Integration Complete — Canvas/Deploy/Rollback verified)
+> **Last Updated**: 2026-04-03 (Phase 3: J8 Scheduled Triggers + J9 On-Prem Docker Compose — complete)
 
 
 ---
@@ -27,8 +27,9 @@ Workline-AI/
 │   │   │   │   ├── dependencies.py ✅ get_current_user, require_viewer / require_editor / require_admin
 │   │   │   │   └── jwt.py          ✅ create_access_token, decode_access_token
 │   │   │   ├── core/
-│   │   │   │   ├── celery_app.py   ✅ Celery + Redis broker config
+│   │   │   │   ├── celery_app.py   ✅ Celery + Redis broker config + beat_schedule for dynamic cron
 │   │   │   │   ├── context.py      ✅ Domain context string for LLM prompt
+│   │   │   │   ├── scheduler.py    ✅ Dynamic Celery beat scheduler [J8] — register/deregister/restore
 │   │   │   │   └── tasks.py        ✅ execute_workflow_task (Celery task)
 │   │   │   ├── db/
 │   │   │   │   └── session.py      ✅ SQLite engine / PostgreSQL-ready, get_db dependency
@@ -38,7 +39,8 @@ Workline-AI/
 │   │   │   │   ├── auth.py         ✅ POST /auth/login, /auth/register
 │   │   │   │   ├── workflows.py    ✅ Full workflow CRUD + deploy + run + rollback + runs
 │   │   │   │   ├── planning.py     ✅ POST /plan + GET /conversations/{id} [J1]
-│   │   │   │   └── blocks.py       ✅ GET /blocks, GET /blocks/{type} [M3]
+│   │   │   │   ├── blocks.py       ✅ GET /blocks, GET /blocks/{type} [M3]
+│   │   │   │   └── schedules.py    ✅ GET/PUT/DELETE /workflows/{id}/schedule [J8]
 │   │   │   ├── schemas/
 │   │   │   │   ├── auth.py         ✅ Login / token Pydantic schemas
 │   │   │   │   └── workflow.py     ✅ Detailed workflow request/response schemas
@@ -92,34 +94,42 @@ Workline-AI/
 │   └── workflow_engine/        ✅ Workflow runner + engine.py
 │
 └── infra/
-    └── docker/
-        └── docker-compose.yml  ✅ FastAPI + PostgreSQL 16 + Redis 7 + MinIO
+    ├── docker/
+    │   ├── docker-compose.yml         ✅ FastAPI + PostgreSQL 16 + Redis 7 + MinIO (cloud)
+    │   └── docker-compose.onprem.yml  ✅ Adds Ollama + BGE TEI; zero external AI calls [J9]
+    └── litellm_config.yaml            ✅ LiteLLM proxy config pointing at local Ollama [J9]
+
+docs/
+└── runbooks/
+    └── onprem-setup.md               ✅ Step-by-step on-prem deployment guide [J9]
 ```
 
 ---
 
 ## 🗄️ Database Schema (SQLAlchemy → SQLite / PostgreSQL)
 
-| Table                | Key Columns                                                                               | Notes                                                    |
-| -------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `organisations`      | id, name, plan, created_at                                                                | Multi-tenant root                                        |
-| `users`              | id, org_id, name, email, password_hash, role                                              | Roles: admin, editor, viewer                             |
-| `workflows`          | id, org_id, name, description, status, version, parent_version_id, created_by, created_at | status: draft/active/archived                            |
-| `workflow_nodes`     | id (String), workflow_id, type, config_json, position_x, position_y, reasoning            | id is string e.g. "node_1"                               |
-| `workflow_edges`     | id (String), workflow_id, source_node_id, target_node_id, edge_type                       | edge_type: default/condition_true/condition_false        |
-| `workflow_runs`      | id, workflow_id, status, started_at, ended_at, logs                                       | status: pending/running/completed/failed/awaiting_review |
-| `run_node_states`    | id, run_id, node_id, status, started_at, ended_at, output_json, error                     | Per-node run state                                       |
-| `files`              | id, org_id, workflow_id, path, hash, metadata_json                                        | MinIO-backed storage                                     |
-| `models`             | id, name, type, version, metrics_json                                                     | Registered ML models                                     |
-| `audit_logs`         | id, org_id, user_id, action, entity_type, entity_id, timestamp                            | Audit trail                                              |
-| `drift_alerts`       | id, workflow_id, metric, baseline_val, current_val, resolved, created_at                  |                                                          |
-| `conversations`      | id, org_id, workflow_id, created_at                                                       | Chat sessions [J1]                                       |
-| `conversation_turns` | id, conversation_id, role, content, proposal_json, created_at                             | role: user/assistant [J1]                                |
+| Table                | Key Columns                                                                                   | Notes                                                    |
+| -------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `organisations`      | id, name, plan, created_at                                                                    | Multi-tenant root                                        |
+| `users`              | id, org_id, name, email, password_hash, role                                                  | Roles: admin, editor, viewer                             |
+| `workflows`          | id, org_id, name, description, status, version, parent_version_id, created_by, created_at     | status: draft/active/archived                            |
+| `workflow_nodes`     | id (String), workflow_id, type, config_json, position_x, position_y, reasoning                | id is string e.g. "node_1"                               |
+| `workflow_edges`     | id (String), workflow_id, source_node_id, target_node_id, edge_type                           | edge_type: default/condition_true/condition_false        |
+| `workflow_runs`      | id, workflow_id, status, started_at, ended_at, logs                                           | status: pending/running/completed/failed/awaiting_review |
+| `run_node_states`    | id, run_id, node_id, status, started_at, ended_at, output_json, error                         | Per-node run state                                       |
+| `files`              | id, org_id, workflow_id, path, hash, metadata_json                                            | MinIO-backed storage                                     |
+| `models`             | id, name, type, version, metrics_json                                                         | Registered ML models                                     |
+| `audit_logs`         | id, org_id, user_id, action, entity_type, entity_id, timestamp                                | Audit trail                                              |
+| `drift_alerts`       | id, workflow_id, metric, baseline_val, current_val, resolved, created_at                      |                                                          |
+| `scheduled_triggers` | id, workflow_id, org_id, cron_expr, enabled, next_run_at, last_run_at, created_at, updated_at | Cron-based workflow triggers [J8]                        |
+| `conversations`      | id, org_id, workflow_id, created_at                                                           | Chat sessions [J1]                                       |
+| `conversation_turns` | id, conversation_id, role, content, proposal_json, created_at                                 | role: user/assistant [J1]                                |
 
 **Applied Alembic Migrations:**
 1. `7c4bff9d1fb8_initial_m1_setup.py`
 2. `06e4945f3618_add_user_password.py`
 3. `0e785d094cbd_add_conversations_and_conversation_turns.py` [J1]
+4. `a1b2c3d4e5f6_add_scheduled_triggers.py` [J8]
 
 ---
 
@@ -147,6 +157,9 @@ Workline-AI/
 | `GET /runs/{id}`                             | `routers/runs.py`                        | ✅ Done [M4]                              |
 | `DELETE /runs/{id}/cancel`                   | `routers/runs.py`                        | ✅ Done [M4]                              |
 | `WS /ws/workspace/{org_id}`                  | `routers/ws.py`                          | ✅ Done [M4]                              |
+| `GET /workflows/{id}/schedule`               | `routers/schedules.py`                   | ✅ Done [J8]                              |
+| `PUT /workflows/{id}/schedule`               | `routers/schedules.py`                   | ✅ Done [J8]                              |
+| `DELETE /workflows/{id}/schedule`            | `routers/schedules.py`                   | ✅ Done [J8]                              |
 | `GET /blocks`                                | `routers/blocks.py`                      | ✅ Done [M3]                              |
 | `GET /blocks/{block_type}`                   | `routers/blocks.py`                      | ✅ Done [M3]                              |
 
@@ -154,22 +167,23 @@ Workline-AI/
 
 ## 🖥️ Frontend Components
 
-| Component              | Path                                 | Status                                                                         |
-| ---------------------- | ------------------------------------ | ------------------------------------------------------------------------------ |
-| Canvas split-view page | `app/automate/page.tsx`              | ✅ Done — Ctrl+Z/Y shortcuts, context menu suppression [J2]                     |
-| Workflow detail page   | `app/workflow/[id]/page.tsx`         | ✅ Done — real API fetch, Deploy button, Rollback UI in Settings tab [J4]       |
-| Dashboard              | `app/dashboard/page.tsx`             | ✅ Done (mock stats)                                                            |
-| Login stub             | `app/login/page.tsx`                 | ✅ Done                                                                         |
-| ChatPanel (chatbot)    | `components/chatbot/ChatPanel.tsx`   | ✅ Done — conv ID badge, History restore, per-block reasoning, file attach [J3] |
-| Sidebar                | `components/workspace/Sidebar.tsx`   | ✅ Done — status dots, Domain Pack link, badge-warning [J4]                     |
-| BlockPalette           | `components/canvas/BlockPalette.tsx` | ✅ Done — search + domain pack toggle [J2]                                      |
-| Toolbar                | `components/canvas/Toolbar.tsx`      | ✅ Done — Undo/Redo/Auto-layout/ZoomFit/Validate/Save(modal)/Deploy(modal) [J4] |
-| SaveModal              | `components/canvas/SaveModal.tsx`    | ✅ Done — name+description form, POST /workflows, auto-creates sidebar tab [J4] |
-| DeployModal            | `components/canvas/DeployModal.tsx`  | ✅ Done — confirmation dialog, POST /deploy, updates sidebar badge [J4]         |
-| canvasStore            | `stores/canvasStore.ts`              | ✅ Done — undo/redo, diff, auto-layout, domain pack [J2]                        |
-| chatStore              | `stores/chatStore.ts`                | ✅ Done — conversationId, loadConversation() [J3]                               |
-| workspaceStore         | `stores/workspaceStore.ts`           | ✅ Done — addWorkflowTab(), updateWorkflowStatus(), renameWorkflowTab() [J4]    |
-| API service layer      | `lib/api.ts`                         | ✅ Done (all endpoints, auth headers)                                           |
+| Component              | Path                                        | Status                                                                         |
+| ---------------------- | ------------------------------------------- | ------------------------------------------------------------------------------ |
+| Canvas split-view page | `app/automate/page.tsx`                     | ✅ Done — Ctrl+Z/Y shortcuts, context menu suppression [J2]                     |
+| Workflow detail page   | `app/workflow/[id]/page.tsx`                | ✅ Done — real API fetch, Deploy button, Rollback UI in Settings tab [J4]       |
+| Dashboard              | `app/dashboard/page.tsx`                    | ✅ Done (mock stats)                                                            |
+| Login stub             | `app/login/page.tsx`                        | ✅ Done                                                                         |
+| ChatPanel (chatbot)    | `components/chatbot/ChatPanel.tsx`          | ✅ Done — conv ID badge, History restore, per-block reasoning, file attach [J3] |
+| Sidebar                | `components/workspace/Sidebar.tsx`          | ✅ Done — status dots, Domain Pack link, badge-warning [J4]                     |
+| BlockPalette           | `components/canvas/BlockPalette.tsx`        | ✅ Done — search + domain pack toggle [J2]                                      |
+| Toolbar                | `components/canvas/Toolbar.tsx`             | ✅ Done — Undo/Redo/Auto-layout/ZoomFit/Validate/Save(modal)/Deploy(modal) [J4] |
+| SaveModal              | `components/canvas/SaveModal.tsx`           | ✅ Done — name+description form, POST /workflows, auto-creates sidebar tab [J4] |
+| DeployModal            | `components/canvas/DeployModal.tsx`         | ✅ Done — confirmation dialog, POST /deploy, updates sidebar badge [J4]         |
+| ScheduleConfigPanel    | `components/canvas/ScheduleConfigPanel.tsx` | ✅ Done — cron input, presets, human-readable preview, save/delete [J8]         |
+| canvasStore            | `stores/canvasStore.ts`                     | ✅ Done — undo/redo, diff, auto-layout, domain pack [J2]                        |
+| chatStore              | `stores/chatStore.ts`                       | ✅ Done — conversationId, loadConversation() [J3]                               |
+| workspaceStore         | `stores/workspaceStore.ts`                  | ✅ Done — addWorkflowTab(), updateWorkflowStatus(), renameWorkflowTab() [J4]    |
+| API service layer      | `lib/api.ts`                                | ✅ Done (all endpoints, auth headers, getSchedule/setSchedule/deleteSchedule)   |
 
 ---
 
@@ -226,27 +240,32 @@ Workline-AI/
 - J2 — Canvas UI: undo/redo, diff highlights, right-click menu, router dual-handles, auto-layout, domain pack toggle
 - J3 — Chatbot Panel UI: conversation_id tracking, loadConversation(), per-block reasoning accordion, file attach, timestamps, restore dialog
 - J4 — Workflow Save/Deploy UI: SaveModal (POST /workflows), DeployModal (POST /deploy), Rollback UI, Sidebar status dots + Domain Pack link, workspaceStore actions
+- J8 — Scheduled Triggers: ScheduledTrigger model, Alembic migration, schedules router, dynamic Celery beat scheduler, scheduled_trigger block in registry, ScheduleConfigPanel frontend, api.ts helpers
+- J9 — On-Prem Docker Compose: docker-compose.onprem.yml (Ollama + BGE TEI + MinIO), litellm_config.yaml, WORKLINE_MODE env switch in planner.py + llm.py, onprem-setup.md runbook
 - Shared Setup: shared-types, Turborepo, env templates, api.ts
 
 ---
 
 ## 🌍 Environment Variables
 
-| Variable              | Purpose                                 | Status                                     |
-| --------------------- | --------------------------------------- | ------------------------------------------ |
-| `GROQ_API_KEY`        | Real LLM calls in `ai/planner.py`       | **Required** — set in `apps/api/.env` [J1] |
-| `DATABASE_URL`        | PostgreSQL URL (SQLite used by default) | Optional                                   |
-| `REDIS_URL`           | Redis broker for Celery                 | Defaults to `redis://localhost:6379/0`     |
-| `JWT_SECRET_KEY`      | JWT signing secret                      | Required for auth                          |
-| `NEXT_PUBLIC_API_URL` | Frontend → Backend URL                  | Defaults to `http://localhost:8000`        |
-| `NEXT_PUBLIC_WS_URL`  | Frontend → WebSocket URL                | Defaults to `ws://localhost:8000`          |
+| Variable              | Purpose                                 | Status                                                   |
+| --------------------- | --------------------------------------- | -------------------------------------------------------- |
+| `GROQ_API_KEY`        | Real LLM calls in `ai/planner.py`       | **Required in cloud mode** — set in `apps/api/.env` [J1] |
+| `DATABASE_URL`        | PostgreSQL URL (SQLite used by default) | Optional                                                 |
+| `REDIS_URL`           | Redis broker for Celery                 | Defaults to `redis://localhost:6379/0`                   |
+| `JWT_SECRET_KEY`      | JWT signing secret                      | Required for auth                                        |
+| `WORKLINE_MODE`       | `cloud` (default) or `onprem`           | Switches LLM/embedding provider [J9]                     |
+| `OLLAMA_BASE_URL`     | Ollama endpoint (onprem mode)           | Defaults to `http://localhost:11434` [J9]                |
+| `EMBEDDING_URL`       | BGE TEI endpoint (onprem mode)          | Defaults to `http://localhost:8080` [J9]                 |
+| `NEXT_PUBLIC_API_URL` | Frontend → Backend URL                  | Defaults to `http://localhost:8000`                      |
+| `NEXT_PUBLIC_WS_URL`  | Frontend → WebSocket URL                | Defaults to `ws://localhost:8000`                        |
 
 ---
 
 ## 🚀 Running Locally
 
 ```bash
-# Backend
+# Backend (cloud mode)
 cd apps/api
 pip install -r requirements.txt
 alembic upgrade head
@@ -254,11 +273,19 @@ python app/seed.py
 uvicorn app.main:app --reload
 # Swagger: http://localhost:8000/docs
 
+# Backend (on-prem mode — zero external calls)
+docker compose -f infra/docker/docker-compose.onprem.yml up -d
+# See docs/runbooks/onprem-setup.md for full guide
+
 # Frontend
 cd apps/web
 npm install
 npm run dev
 # App: http://localhost:3000
+
+# Celery beat (for scheduled triggers)
+cd apps/api
+celery -A app.core.celery_app.celery_app beat --loglevel=info
 ```
 
 ---

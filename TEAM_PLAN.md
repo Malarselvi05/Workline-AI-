@@ -3,7 +3,7 @@
 > Each member owns a feature end-to-end: its database models, API routes, services, and UI.
 >
 > **Rule**: Mark tasks `[x]` when done. Update `CONTEXT.md` on every meaningful commit.
-> **Last Updated**: 2026-03-03 (Phase 1 Integration Complete — Canvas/Deploy/Rollback verified)
+> **Last Updated**: 2026-04-03 (Phase 3: J8 Scheduled Triggers + J9 On-Prem Docker Compose — complete)
 
 
 ---
@@ -307,18 +307,18 @@ These decisions must be made and committed before either member starts Phase 1:
 
 ### 🟦 Member J — Scheduled Triggers + On-Prem Mode (Full-Stack)
 
-#### J8 — Scheduled Triggers (Full-Stack)
-- [ ] Add `ScheduledTriggerBlock` with cron expression config
-- [ ] Register/deregister Celery beat jobs dynamically when workflow is deployed/archived
-- [ ] `GET /workflows/{id}/schedule` · `PUT /workflows/{id}/schedule` endpoints
-- [ ] Cron expression input in block Configure panel with human-readable preview ("Every day at 9:00 AM")
-- [ ] Schedule status badge on sidebar tab ("Next run in 4h")
+#### J8 — Scheduled Triggers (Full-Stack) [x]
+- [x] Add `ScheduledTriggerBlock` with cron expression config
+- [x] Register/deregister Celery beat jobs dynamically when workflow is deployed/archived
+- [x] `GET /workflows/{id}/schedule` · `PUT /workflows/{id}/schedule` endpoints
+- [x] Cron expression input in block Configure panel with human-readable preview ("Every day at 9:00 AM")
+- [x] Schedule status badge on sidebar tab ("Next run in 4h")
 
-#### J9 — On-Prem Docker Compose (Full-Stack)
-- [ ] `infra/docker-compose.onprem.yml`: replace OpenAI with **Ollama** (local LLM) + `BAAI/bge-large-en-v1.5` inference server + MinIO; zero external network calls
-- [ ] LiteLLM config pointing to Ollama endpoint
-- [ ] Environment flag `WORKLINE_MODE=onprem` switches all AI services to local endpoints
-- [ ] Write `docs/runbooks/onprem-setup.md` with step-by-step local deployment guide
+#### J9 — On-Prem Docker Compose (Full-Stack) [x]
+- [x] `infra/docker-compose.onprem.yml`: replace OpenAI with **Ollama** (local LLM) + `BAAI/bge-large-en-v1.5` inference server + MinIO; zero external network calls
+- [x] LiteLLM config pointing to Ollama endpoint
+- [x] Environment flag `WORKLINE_MODE=onprem` switches all AI services to local endpoints
+- [x] Write `docs/runbooks/onprem-setup.md` with step-by-step local deployment guide
 
 ---
 

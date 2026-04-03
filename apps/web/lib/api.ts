@@ -332,3 +332,40 @@ export async function getDriftAlerts(): Promise<DriftAlert[]> {
     const data = await request<{ alerts: DriftAlert[] }>('/api/dashboard/drift-alerts');
     return data.alerts;
 }
+
+// ── Scheduled Triggers ────────────────────────────────────────────────────
+
+export interface ScheduledTrigger {
+    id: number;
+    workflow_id: number;
+    org_id?: number;
+    cron_expr: string;
+    enabled: boolean;
+    next_run_at?: string;   // ISO datetime string
+    last_run_at?: string;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface ScheduleUpsertRequest {
+    cron_expr: string;
+    enabled?: boolean;
+}
+
+export async function getSchedule(workflowId: number): Promise<ScheduledTrigger> {
+    return request<ScheduledTrigger>(`/workflows/${workflowId}/schedule`);
+}
+
+export async function setSchedule(
+    workflowId: number,
+    data: ScheduleUpsertRequest
+): Promise<ScheduledTrigger> {
+    return request<ScheduledTrigger>(`/workflows/${workflowId}/schedule`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+    });
+}
+
+export async function deleteSchedule(workflowId: number): Promise<void> {
+    await request(`/workflows/${workflowId}/schedule`, { method: 'DELETE' });
+}

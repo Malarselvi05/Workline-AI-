@@ -66,6 +66,16 @@ const BLOCK_REGISTRY: Record<string, BlockDefinition> = {
             { name: 'fields', type: 'string', label: 'Field names (comma-separated)', required: true },
         ],
     },
+    scheduled_trigger: {
+        type: 'scheduled_trigger', category: 'Input', label: 'Scheduled Trigger', icon: 'Clock',
+        description: "Fires the workflow automatically on a cron schedule (e.g. '0 9 * * 1-5' = weekdays at 9 AM)",
+        inputTypes: [], outputType: 'json',
+        allowRetry: false, maxRetries: 0,
+        configFields: [
+            { name: 'cron_expression', type: 'string', label: 'Cron Expression', required: true, default: '0 9 * * *' },
+            { name: 'timezone', type: 'string', label: 'Timezone', default: 'UTC' },
+        ],
+    },
 
     // ── Extract ────────────────────────────────────────────────────────────────
     ocr: {

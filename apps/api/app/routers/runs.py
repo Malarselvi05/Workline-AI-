@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.db.session import get_db
 from app.models import models
-from app.auth.dependencies import get_current_user, require_viewer, require_editor
+from app.auth.dependencies import get_current_user, get_current_active_user, require_viewer, require_editor
 from app.core.tasks import execute_workflow_task
 import logging
 

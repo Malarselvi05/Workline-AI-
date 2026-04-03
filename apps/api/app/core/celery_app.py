@@ -28,7 +28,13 @@ celery_app = Celery(
 )
 
 celery_app.conf.task_routes = {
-    "app.core.tasks.execute_workflow_task": "main-queue"
+    "app.core.tasks.execute_workflow_task": "main-queue",
+    "app.core.scheduler.trigger_scheduled_workflow": "main-queue",
 }
 
+# Dynamic beat schedules are populated at runtime by app.core.scheduler
+celery_app.conf.beat_schedule = {}
+celery_app.conf.timezone = "UTC"
+
 celery_app.autodiscover_tasks(["app.core"])
+

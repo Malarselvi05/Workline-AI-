@@ -148,6 +148,21 @@ class Conversation(Base):
     turns = relationship("ConversationTurn", back_populates="conversation", cascade="all, delete-orphan")
 
 
+class ScheduledTrigger(Base):
+    __tablename__ = "scheduled_triggers"
+    id = Column(Integer, primary_key=True, index=True)
+    workflow_id = Column(Integer, ForeignKey("workflows.id"), unique=True, nullable=False)
+    org_id = Column(Integer, ForeignKey("organisations.id"), nullable=True)
+    cron_expr = Column(String, nullable=False)          # e.g. "0 9 * * *"
+    enabled = Column(Boolean, default=True)
+    next_run_at = Column(DateTime, nullable=True)
+    last_run_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    workflow = relationship("Workflow", backref="scheduled_trigger", uselist=False)
+
+
 class ConversationTurn(Base):
     __tablename__ = "conversation_turns"
     id = Column(Integer, primary_key=True, index=True)

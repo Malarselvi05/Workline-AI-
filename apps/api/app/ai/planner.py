@@ -1,16 +1,15 @@
 """
-GroqPlanner — Real LLM-powered workflow planner using Groq (llama-3.3-70b-versatile).
+GroqPlanner — Real LLM-powered workflow planner.
 
-Replaces the keyword-matching mock in services/planner.py.
+Supports two modes controlled by WORKLINE_MODE env var:
+  cloud  (default) — Groq llama-3.3-70b-versatile (external API)
+  onprem           — Ollama llama3.2:3b via OLLAMA_BASE_URL (zero external calls)
 """
 import json
 import logging
 import os
 from typing import Any, Dict, List, Optional
 from collections import deque
-
-from groq import Groq
-from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +49,8 @@ BLOCK_REGISTRY: Dict[str, Dict[str, str]] = {
     "duplicate_detector":       {"category": "Mechanical", "label": "Duplicate Drawing Detector", "description": "Detects duplicate drawings using embedding cosine similarity"},
     "team_leader_recommender":  {"category": "Mechanical", "label": "Team Leader Recommender",    "description": "Recommends the best team leader using an XGBoost model"},
 }
+
+WORKLINE_MODE = os.getenv("WORKLINE_MODE", "cloud").lower()  # "cloud" | "onprem"
 
 VALID_BLOCK_TYPES = set(BLOCK_REGISTRY.keys())
 
@@ -224,13 +225,29 @@ def _history_to_messages(turns: list) -> List[Dict[str, str]]:
 # ---------------------------------------------------------------------------
 class GroqPlanner:
     def __init__(self):
-        api_key = os.getenv("GROQ_API_KEY")
-        if not api_key:
-            raise RuntimeError("GROQ_API_KEY environment variable is not set.")
-        self.client = Groq(api_key=api_key)
-        self.model = "llama-3.3-70b-versatile"
+        self._mode = WORKLINE_MODE
+        if self._mode == "onprem":
+            # Use Ollama via litellm (no external API key needed)
+            self._ollama_base = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+            logger.info("GroqPlanner: on-prem mode — Ollama at %s", self._ollama_base)
+            self.client = None  # not used in onprem mode
+            self.model = "ollama/llama3.2:3b"
+        else:
+            from groq import Groq
+            from sqlalchemy.orm import Session
+            api_key = os.getenv("GROQ_API_KEY")
+            if not api_key:
+                raise RuntimeError("GROQ_API_KEY environment variable is not set.")
+            self.client = Groq(api_key=api_key)
+            self.model = "llama-3.3-70b-versatile"
 
     # ------------------------------------------------------------------
+    def _call_llm(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
+        """Route to Groq (cloud) or Ollama (on-prem) depending on WORKLINE_MODE."""
+        if self._mode == "onprem":
+            return self._call_ollama(messages)
+        return self._call_groq(messages)
+
     def _call_groq(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
         """Raw Groq call with JSON mode."""
         response = self.client.chat.completions.create(
@@ -242,6 +259,28 @@ class GroqPlanner:
         )
         raw = response.choices[0].message.content
         return json.loads(raw)
+
+    def _call_ollama(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
+        """Call local Ollama via the OpenAI-compatible /api/chat endpoint."""
+        import urllib.request
+        import urllib.error
+        payload = json.dumps({
+            "model": "llama3.2:3b",
+            "messages": messages,
+            "stream": False,
+            "format": "json",
+            "options": {"temperature": 0.2},
+        }).encode()
+        req = urllib.request.Request(
+            f"{self._ollama_base}/api/chat",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            result = json.loads(resp.read().decode())
+        raw_content = result["message"]["content"]
+        return json.loads(raw_content)
 
     # ------------------------------------------------------------------
     def _parse_and_validate(self, raw: Dict[str, Any]) -> tuple[Dict[str, Any], Optional[str]]:
@@ -317,10 +356,10 @@ class GroqPlanner:
 
         # --- First attempt ---
         try:
-            raw = self._call_groq(messages)
+            raw = self._call_llm(messages)
             proposal, err = self._parse_and_validate(raw)
         except Exception as e:
-            logger.error(f"Groq API call failed: {e}")
+            logger.error(f"LLM call failed: {e}")
             raise RuntimeError(f"LLM call failed: {e}") from e
 
         # --- Retry once on validation failure ---
@@ -337,10 +376,10 @@ class GroqPlanner:
                 },
             ]
             try:
-                raw = self._call_groq(retry_messages)
+                raw = self._call_llm(retry_messages)
                 proposal, err = self._parse_and_validate(raw)
             except Exception as e:
-                logger.error(f"Groq retry call failed: {e}")
+                logger.error(f"LLM retry call failed: {e}")
                 raise RuntimeError(f"LLM retry failed: {e}") from e
 
             if err:

@@ -78,6 +78,22 @@ npm run dev
 ```
 *   **Access UI:** `http://localhost:3000`
 *   **Note:** Ensure `NEXT_PUBLIC_API_URL` is set if you change the backend port.
+
+### 3. On-Premises Setup (Zero External Calls)
+```powershell
+# Requires Docker Desktop with 16 GB RAM available
+docker compose -f infra/docker/docker-compose.onprem.yml up -d
+# First run: Ollama will pull llama3.2:3b (~2 GB) automatically
+```
+*   Full guide: [`docs/runbooks/onprem-setup.md`](./docs/runbooks/onprem-setup.md)
+*   No `GROQ_API_KEY` needed — all AI is served locally by Ollama + BGE embeddings
+
+### 4. Celery Beat Scheduler (for Scheduled Triggers)
+```powershell
+cd apps/api
+celery -A app.core.celery_app.celery_app beat --loglevel=info
+```
+*Needed if you use the `ScheduledTriggerBlock` in any deployed workflow.*
 ---
 
 ## 🧪 Try These Prompts
@@ -104,7 +120,7 @@ Workline-AI/
 
 ---
 
-## 🛠️ Current Status (v0.3.0-alpha)
+## 🛠️ Current Status (v0.4.0-alpha)
 - [x] Multi-tenant DB Foundation (Organisations, Users, Workflows)
 - [x] Alembic Migration System
 - [x] Backend Seeding & Idempotency
@@ -116,5 +132,7 @@ Workline-AI/
 - [x] **Canvas UI** — Undo/Redo, diff highlights, right-click menu, auto-layout (J2)
 - [x] **Chatbot Panel UI** — Reasoning accordion, file attach, conversation restore (J3)
 - [x] **Workflow Save/Deploy UI** — SaveModal, DeployModal, Rollback UI, Sidebar status badges (J4)
+- [x] **Scheduled Triggers** — Cron schedule via `PUT /workflows/{id}/schedule`, dynamic Celery beat, ScheduleConfigPanel UI (J8)
+- [x] **On-Premises Mode** — `WORKLINE_MODE=onprem` runs fully air-gapped with Ollama + BGE via `docker-compose.onprem.yml` (J9)
 - [/] Multi-Domain Block Library (In Progress)
 - [ ] Multi-user RBAC (Planned)

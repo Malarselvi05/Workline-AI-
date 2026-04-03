@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.schemas.workflow import WorkflowCreate, WorkflowResponse, WorkflowDetailResponse, NodeSchema, EdgeSchema, WorkflowBase
 from typing import List, Optional
-from app.auth.dependencies import get_current_user, require_viewer, require_editor
+from app.auth.dependencies import get_current_user, get_current_active_user, require_viewer, require_editor
 from app.db.session import get_db
 from app.models import models
 from app.services.audit import log_action
@@ -158,6 +158,15 @@ async def deploy_workflow(
     
     workflow.status = "active"
     
+    # Re-register cron schedule if one exists for this workflow
+    try:
+        from app.core.scheduler import register_schedule
+        trigger = db.query(models.ScheduledTrigger).filter_by(workflow_id=workflow_id).first()
+        if trigger and trigger.enabled:
+            register_schedule(db, workflow_id, trigger.cron_expr, trigger.org_id)
+    except Exception as sched_err:
+        logger.warning("Could not re-register schedule on deploy: %s", sched_err)
+    
     log_action(
         db=db,
         org_id=current_user.org_id,
@@ -209,6 +218,13 @@ async def delete_workflow(
         raise HTTPException(status_code=404, detail="Workflow not found")
     
     workflow.status = "archived"
+    
+    # Deregister any cron schedule so it stops firing
+    try:
+        from app.core.scheduler import deregister_schedule
+        deregister_schedule(db, workflow_id)
+    except Exception as sched_err:
+        logger.warning("Could not deregister schedule on archive: %s", sched_err)
     
     log_action(
         db=db,

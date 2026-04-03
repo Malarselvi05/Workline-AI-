@@ -1,0 +1,148 @@
+version: '3.8'
+
+# ============================================================
+# WorkLine AI — On-Premises Deployment
+# Zero external network calls: all AI runs locally via Ollama.
+#
+# Usage:
+#   docker compose -f infra/docker/docker-compose.onprem.yml up -d
+#
+# First-time GPU-less startup takes ~5 min to pull the Ollama model.
+# ============================================================
+
+services:
+
+  # ── Database ──────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=workline
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  # ── Redis (Celery broker + pub/sub) ───────────────────────────────────────
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  # ── MinIO (local object storage — replaces external S3) ───────────────────
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+
+  # ── Ollama (local LLM — replaces Groq / OpenAI) ──────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # Pull llama3.2:3b on first start (CPU-compatible, ~2 GB)
+    entrypoint: >
+      sh -c "ollama serve &
+             sleep 5 &&
+             ollama pull llama3.2:3b &&
+             wait"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 6g    # adjust to available RAM (model needs ~3 GB)
+
+  # ── BGE Embedding Server (replaces text-embedding-3-large) ───────────────
+  bge-inference:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+    ports:
+      - "8080:80"
+    command: --model-id BAAI/bge-large-en-v1.5 --port 80
+    volumes:
+      - bge_data:/data
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+
+  # ── FastAPI Backend ────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ../../
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - WORKLINE_MODE=onprem
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/workline
+      - REDIS_URL=redis://redis:6379/0
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - EMBEDDING_URL=http://bge-inference:80
+      # No GROQ_API_KEY needed in on-prem mode
+    depends_on:
+      - db
+      - redis
+      - minio
+      - ollama
+      - bge-inference
+    restart: unless-stopped
+
+  # ── Celery Worker ─────────────────────────────────────────────────────────
+  worker:
+    build:
+      context: ../../
+      dockerfile: apps/api/Dockerfile
+    command: celery -A app.core.celery_app.celery_app worker --loglevel=info
+    environment:
+      - WORKLINE_MODE=onprem
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/workline
+      - REDIS_URL=redis://redis:6379/0
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - EMBEDDING_URL=http://bge-inference:80
+    depends_on:
+      - db
+      - redis
+      - minio
+      - ollama
+    restart: unless-stopped
+
+  # ── Celery Beat (Scheduler) ────────────────────────────────────────────────
+  beat:
+    build:
+      context: ../../
+      dockerfile: apps/api/Dockerfile
+    command: celery -A app.core.celery_app.celery_app beat --loglevel=info
+    environment:
+      - WORKLINE_MODE=onprem
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/workline
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+      - db
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  minio_data:
+  ollama_data:
+  bge_data:
