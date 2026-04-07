@@ -68,7 +68,7 @@ def protect_audit_logs(session, flush_context, instances):
     """
     for obj in session.dirty:
         if getattr(obj, "__tablename__", None) == "audit_logs":
-            raise Exception("Updates to audit logs are not allowed")
+            raise Exception("Audit logs are append-only. Updates are not allowed.")
     for obj in session.deleted:
         if getattr(obj, "__tablename__", None) == "audit_logs":
-            raise Exception("Deletions of audit logs are not allowed")
+            raise Exception("Audit logs are append-only. Deletions are not allowed.")
