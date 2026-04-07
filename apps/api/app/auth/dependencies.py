@@ -38,16 +38,26 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
 async def get_current_active_user(current_user: models.User = Depends(get_current_user)):
     return current_user
 
-def check_role(roles: list):
-    async def role_checker(current_user: models.User = Depends(get_current_active_user)):
-        if current_user.role not in roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="The user doesn't have enough privileges"
-            )
-        return current_user
-    return role_checker
+async def require_admin(current_user: models.User = Depends(get_current_active_user)):
+    if current_user.role not in ["admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    return current_user
 
-require_admin = Depends(check_role(["admin"]))
-require_editor = Depends(check_role(["admin", "editor"]))
-require_viewer = Depends(check_role(["admin", "editor", "viewer"]))
+async def require_editor(current_user: models.User = Depends(get_current_active_user)):
+    if current_user.role not in ["admin", "editor"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Editor access required"
+        )
+    return current_user
+
+async def require_viewer(current_user: models.User = Depends(get_current_active_user)):
+    if current_user.role not in ["admin", "editor", "viewer"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Viewer access required"
+        )
+    return current_user

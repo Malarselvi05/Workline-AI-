@@ -56,7 +56,7 @@ class ConversationOut(BaseModel):
 # POST /plan
 # ---------------------------------------------------------------------------
 
-@router.post("/plan", dependencies=[require_viewer])
+@router.post("/plan", dependencies=[Depends(require_viewer)])
 async def plan_workflow(
     request: PlanRequest,
     db: Session = Depends(get_db),
@@ -95,7 +95,7 @@ async def plan_workflow(
 # GET /conversations/{id}
 # ---------------------------------------------------------------------------
 
-@router.get("/conversations/{conversation_id}", response_model=ConversationOut, dependencies=[require_viewer])
+@router.get("/conversations/{conversation_id}", response_model=ConversationOut, dependencies=[Depends(require_viewer)])
 async def get_conversation(
     conversation_id: int,
     db: Session = Depends(get_db),

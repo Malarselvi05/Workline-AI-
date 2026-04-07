@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
 
-@router.post("", response_model=WorkflowResponse, dependencies=[require_editor])
+@router.post("", response_model=WorkflowResponse, dependencies=[Depends(require_editor)])
 async def create_workflow(
     workflow_data: WorkflowCreate, 
     db: Session = Depends(get_db), 
@@ -137,7 +137,7 @@ async def get_workflow(
         "edges": edges
     }
 
-@router.post("/{workflow_id}/deploy", response_model=WorkflowResponse, dependencies=[require_editor])
+@router.post("/{workflow_id}/deploy", response_model=WorkflowResponse, dependencies=[Depends(require_editor)])
 async def deploy_workflow(
     workflow_id: int, 
     db: Session = Depends(get_db), 
@@ -180,7 +180,7 @@ async def deploy_workflow(
     db.refresh(workflow)
     return workflow
 
-@router.patch("/{workflow_id}", response_model=WorkflowResponse, dependencies=[require_editor])
+@router.patch("/{workflow_id}", response_model=WorkflowResponse, dependencies=[Depends(require_editor)])
 async def update_workflow(
     workflow_id: int, 
     workflow_data: WorkflowBase, 
@@ -207,7 +207,7 @@ async def update_workflow(
     db.refresh(workflow)
     return workflow
 
-@router.delete("/{workflow_id}", response_model=WorkflowResponse, dependencies=[require_editor])
+@router.delete("/{workflow_id}", response_model=WorkflowResponse, dependencies=[Depends(require_editor)])
 async def delete_workflow(
     workflow_id: int, 
     db: Session = Depends(get_db),
@@ -239,7 +239,7 @@ async def delete_workflow(
     db.refresh(workflow)
     return workflow
 
-@router.post("/{workflow_id}/rollback/{version_id}", response_model=WorkflowResponse, dependencies=[require_editor])
+@router.post("/{workflow_id}/rollback/{version_id}", response_model=WorkflowResponse, dependencies=[Depends(require_editor)])
 async def rollback_workflow(
     workflow_id: int, 
     version_id: int, 

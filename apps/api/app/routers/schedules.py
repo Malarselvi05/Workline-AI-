@@ -84,7 +84,7 @@ async def get_schedule(
     return trigger
 
 
-@router.put("/{workflow_id}/schedule", response_model=ScheduleResponse, dependencies=[require_editor])
+@router.put("/{workflow_id}/schedule", response_model=ScheduleResponse, dependencies=[Depends(require_editor)])
 async def upsert_schedule(
     workflow_id: int,
     body: ScheduleUpsertRequest,
@@ -125,7 +125,7 @@ async def upsert_schedule(
     return trigger
 
 
-@router.delete("/{workflow_id}/schedule", status_code=204, dependencies=[require_editor])
+@router.delete("/{workflow_id}/schedule", status_code=204, dependencies=[Depends(require_editor)])
 async def delete_schedule(
     workflow_id: int,
     db: Session = Depends(get_db),
