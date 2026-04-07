@@ -309,7 +309,20 @@ class GroqPlanner:
         with urllib.request.urlopen(req, timeout=120) as resp:
             result = json.loads(resp.read().decode())
         raw_content = result["message"]["content"]
-        return json.loads(raw_content)
+        
+        # Robust JSON extraction for Ollama (handles markdown fences like ```json)
+        raw_content = raw_content.strip()
+        if raw_content.startswith("```"):
+            import re
+            match = re.search(r'```(?:json)?\s*(.*?)\s*```', raw_content, re.DOTALL | re.IGNORECASE)
+            if match:
+                raw_content = match.group(1)
+                
+        try:
+            return json.loads(raw_content)
+        except json.JSONDecodeError as e:
+            logger.error(f"[OLLAMA] JSON parse error: {e}. Raw content: {raw_content}")
+            raise ValueError("Ollama returned invalid JSON that could not be parsed.")
 
     # ------------------------------------------------------------------
     def _parse_and_validate(self, raw: Dict[str, Any], installed_packs: set) -> tuple[Dict[str, Any], Optional[str]]:

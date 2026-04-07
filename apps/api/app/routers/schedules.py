@@ -57,7 +57,16 @@ def _validate_cron(cron_expr: str):
             status_code=422,
             detail=f"cron_expr must have exactly 5 fields (min hour dom mon dow). Got: {cron_expr!r}"
         )
-
+    
+    try:
+        from croniter import croniter
+        if not croniter.is_valid(cron_expr):
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid cron expression logic: {cron_expr!r}. Check ranges (e.g. month cannot be 100)."
+            )
+    except ImportError:
+        pass  # If croniter isn't installed, fall back to basic 5-part check
 
 # ---------------------------------------------------------------------------
 # Routes
