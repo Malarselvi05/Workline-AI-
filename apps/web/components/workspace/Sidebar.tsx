@@ -13,6 +13,8 @@ import {
     Package,
     LogOut,
     Settings,
+    Moon,
+    Sun,
 } from 'lucide-react';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useChatStore } from '@/stores/chatStore';
@@ -33,6 +35,7 @@ export default function Sidebar() {
         toggleSidebar,
         setActiveWorkflow,
         fetchWorkflows,
+        fetchPacks,
         user,
         setUser,
     } = useWorkspaceStore();
@@ -44,6 +47,30 @@ export default function Sidebar() {
         // Try to load the most relevant workflow (active first, then anything)
         const firstWf = workflows.find(w => w.status === 'active') || workflows[0];
         return firstWf ? `/automate?load=${firstWf.id}` : '/automate';
+    };
+
+    const [isDark, setIsDark] = React.useState(true);
+
+    useEffect(() => {
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            setIsDark(true);
+            document.documentElement.classList.add('dark');
+        } else {
+            setIsDark(false);
+            document.documentElement.classList.remove('dark');
+        }
+    }, []);
+
+    const toggleDark = () => {
+        if (isDark) {
+            document.documentElement.classList.remove('dark');
+            localStorage.theme = 'light';
+            setIsDark(false);
+        } else {
+            document.documentElement.classList.add('dark');
+            localStorage.theme = 'dark';
+            setIsDark(true);
+        }
     };
 
     const { clearMessages } = useChatStore();
@@ -64,7 +91,24 @@ export default function Sidebar() {
 
     useEffect(() => {
         fetchWorkflows();
-    }, [fetchWorkflows]);
+        fetchPacks();
+    }, [fetchWorkflows, fetchPacks]);
+
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth < 1024) {
+                if (!useWorkspaceStore.getState().sidebarCollapsed) {
+                    useWorkspaceStore.getState().toggleSidebar();
+                }
+            }
+        };
+        
+        // Initial check
+        handleResize();
+        
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const statusColor = (status: string) => {
         if (status === 'active') return '#10b981';
@@ -160,7 +204,7 @@ export default function Sidebar() {
                 </div>
 
                 {/* ── Workflow Tabs ── */}
-                {workflows.length > 0 && (
+                {workflows.length > 0 ? (
                     <div style={{ marginTop: 16 }}>
                         {!sidebarCollapsed && (
                             <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 12px', marginBottom: 6 }}>
@@ -243,6 +287,30 @@ export default function Sidebar() {
                                 </Link>
                             );
                         })}
+                    </div>
+                ) : (
+                    <div style={{ marginTop: 16 }}>
+                        {!sidebarCollapsed && (
+                            <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 12px', marginBottom: 6 }}>
+                                Workflows
+                            </p>
+                        )}
+                        <div style={{
+                            padding: sidebarCollapsed ? '12px 4px' : '12px',
+                            margin: sidebarCollapsed ? '0 4px' : '0 8px',
+                            background: 'rgba(255,255,255,0.02)',
+                            borderRadius: 'var(--radius-sm)',
+                            border: '1px dashed var(--border-default)',
+                            textAlign: 'center'
+                        }}>
+                            {sidebarCollapsed ? (
+                                <Workflow size={14} color="var(--text-muted)" style={{ margin: '0 auto' }} />
+                            ) : (
+                                <p style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                                    No workflows yet.<br/>Type a goal to start!
+                                </p>
+                            )}
+                        </div>
                     </div>
                 )}
 
@@ -358,8 +426,22 @@ export default function Sidebar() {
                         title="Log out"
                     >
                         <LogOut size={18} />
-                        {!sidebarCollapsed && <span style={{ fontSize: 13, fontWeight: 500 }}>Logout</span>}
                     </button>
+
+                    <button
+                        className="btn-ghost"
+                        onClick={toggleDark}
+                        style={{
+                            justifyContent: 'center',
+                            flex: sidebarCollapsed ? 'unset' : 1,
+                            padding: sidebarCollapsed ? '10px 0' : '8px 10px',
+                            minWidth: sidebarCollapsed ? '100%' : 'unset',
+                        }}
+                        title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                    >
+                        {isDark ? <Sun size={18} /> : <Moon size={18} />}
+                    </button>
+                    {!sidebarCollapsed && <span style={{ fontSize: 13, fontWeight: 500, alignSelf:'center', paddingLeft: 4, cursor:'pointer' }} onClick={handleLogout}>Logout</span>}
                 </div>
             </div>
         </aside>

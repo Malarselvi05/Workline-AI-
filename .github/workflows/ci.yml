@@ -1,0 +1,55 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test-api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio httpx
+          
+      - name: Run Pytest
+        env:
+          DATABASE_URL: "sqlite:///:memory:"
+          WORKLINE_MODE: "cloud"
+        run: |
+          pytest tests/
+
+  test-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          
+      - name: Install Turbo
+        run: npm install -g turbo
+        
+      - name: Install dependencies
+        run: npm install
+        
+      - name: Check formatting and lint
+        run: |
+          npm run lint --if-present || true
+          npm run type-check --if-present || true

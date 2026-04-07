@@ -124,12 +124,14 @@ docs/
 | `scheduled_triggers` | id, workflow_id, org_id, cron_expr, enabled, next_run_at, last_run_at, created_at, updated_at | Cron-based workflow triggers [J8]                        |
 | `conversations`      | id, org_id, workflow_id, created_at                                                           | Chat sessions [J1]                                       |
 | `conversation_turns` | id, conversation_id, role, content, proposal_json, created_at                                 | role: user/assistant [J1]                                |
+| `domain_packs`       | id, org_id, name, status, created_at, updated_at                                              | status: installed/available [M9]                         |
 
 **Applied Alembic Migrations:**
 1. `7c4bff9d1fb8_initial_m1_setup.py`
 2. `06e4945f3618_add_user_password.py`
 3. `0e785d094cbd_add_conversations_and_conversation_turns.py` [J1]
 4. `a1b2c3d4e5f6_add_scheduled_triggers.py` [J8]
+5. `b0d206ef50d7_add_domain_packs.py` [M9]
 
 ---
 
@@ -162,6 +164,9 @@ docs/
 | `DELETE /workflows/{id}/schedule`            | `routers/schedules.py`                   | ✅ Done [J8]                              |
 | `GET /blocks`                                | `routers/blocks.py`                      | ✅ Done [M3]                              |
 | `GET /blocks/{block_type}`                   | `routers/blocks.py`                      | ✅ Done [M3]                              |
+| `GET /packs`                                 | `routers/packs.py`                       | ✅ Done [M9]                              |
+| `POST /packs/{name}/install`                 | `routers/packs.py`                       | ✅ Done [M9]                              |
+| `POST /packs/{name}/uninstall`               | `routers/packs.py`                       | ✅ Done [M9]                              |
 
 ---
 
@@ -175,7 +180,8 @@ docs/
 | Login stub             | `app/login/page.tsx`                        | ✅ Done                                                                         |
 | ChatPanel (chatbot)    | `components/chatbot/ChatPanel.tsx`          | ✅ Done — conv ID badge, History restore, per-block reasoning, file attach [J3] |
 | Sidebar                | `components/workspace/Sidebar.tsx`          | ✅ Done — status dots, Domain Pack link, badge-warning [J4]                     |
-| BlockPalette           | `components/canvas/BlockPalette.tsx`        | ✅ Done — search + domain pack toggle [J2]                                      |
+| BlockPalette           | `components/canvas/BlockPalette.tsx`        | ✅ Done — search + domain pack toggle + installation logic [M9]                 |
+| Packs UI               | `app/packs/page.tsx`                        | ✅ Done — Domain Pack Manager page [M9]                                         |
 | Toolbar                | `components/canvas/Toolbar.tsx`             | ✅ Done — Undo/Redo/Auto-layout/ZoomFit/Validate/Save(modal)/Deploy(modal) [J4] |
 | SaveModal              | `components/canvas/SaveModal.tsx`           | ✅ Done — name+description form, POST /workflows, auto-creates sidebar tab [J4] |
 | DeployModal            | `components/canvas/DeployModal.tsx`         | ✅ Done — confirmation dialog, POST /deploy, updates sidebar badge [J4]         |
@@ -242,6 +248,9 @@ docs/
 - J4 — Workflow Save/Deploy UI: SaveModal (POST /workflows), DeployModal (POST /deploy), Rollback UI, Sidebar status dots + Domain Pack link, workspaceStore actions
 - J8 — Scheduled Triggers: ScheduledTrigger model, Alembic migration, schedules router, dynamic Celery beat scheduler, scheduled_trigger block in registry, ScheduleConfigPanel frontend, api.ts helpers
 - J9 — On-Prem Docker Compose: docker-compose.onprem.yml (Ollama + BGE TEI + MinIO), litellm_config.yaml, WORKLINE_MODE env switch in planner.py + llm.py, onprem-setup.md runbook
+- M9 — Domain Pack Installer (Full-Stack): DB schemas, API endpoints, `packs` frontend view, AI payload filtering based on org packages.
+- M10 — CI/CD + Performance (Full-Stack): GitHub Actions workflow (`ci.yml`), benchmark Pytests for overhead limitations, SQLite/PG append-only triggers validated via tests, ADR documents.
+- M11 — UI Polish + Accessibility: Dark mode localStorage toggle, fully responsive Canvas + Sidebar, zero-data Empty Skeletons, class-component Error Boundaries, full modal Keyboard Trap logic.
 - Shared Setup: shared-types, Turborepo, env templates, api.ts
 
 ---

@@ -20,6 +20,7 @@ import ChatPanel from '@/components/chatbot/ChatPanel';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 import { useCanvasStore, BlockDef, BLOCK_DEFINITIONS } from '@/stores/canvasStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 const nodeTypes = { workflowNode: WorkflowNode };
 
@@ -45,6 +46,15 @@ function CanvasContent() {
 
     const reactFlowRef = useRef<HTMLDivElement>(null);
     const rfInstanceRef = useRef<ReactFlowInstance | null>(null);
+
+    const [isMobile, setIsMobile] = React.useState(false);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 1024);
+        handleResize(); // Initial check
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // ── Load workflow from URL ────────────────────────────────────────────────
     useEffect(() => {
@@ -154,7 +164,15 @@ function CanvasContent() {
     const isEditor = user?.role === 'admin' || user?.role === 'editor';
 
     return (
-        <div style={{ display: 'flex', height: '100%' }}>
+        <div style={{ display: 'flex', height: '100%', position: 'relative' }}>
+            {isMobile && (
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--bg-primary)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32, textAlign: 'center' }}>
+                    <AlertCircle size={48} color="var(--accent-warning)" style={{ marginBottom: 16 }} />
+                    <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Desktop Required</h2>
+                    <p style={{ color: 'var(--text-secondary)' }}>Canvas editing is available on desktop only.<br/>Please rotate your device or use a larger screen (1024px+).</p>
+                </div>
+            )}
+
             {isEditor && <BlockPalette />}
 
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
@@ -239,7 +257,9 @@ function CanvasContent() {
                 </div>
             </div>
 
-            <ChatPanel />
+            <ErrorBoundary>
+                <ChatPanel />
+            </ErrorBoundary>
         </div>
     );
 }
@@ -272,9 +292,11 @@ function AutomatePageContent() {
 
     return (
         <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-            <ReactFlowProvider>
-                <CanvasContent />
-            </ReactFlowProvider>
+            <ErrorBoundary>
+                <ReactFlowProvider>
+                    <CanvasContent />
+                </ReactFlowProvider>
+            </ErrorBoundary>
         </div>
     );
 }

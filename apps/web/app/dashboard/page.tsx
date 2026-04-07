@@ -12,6 +12,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { getDashboardSummary, getRecentRuns, getDriftAlerts } from '@/lib/api';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 const statusBadge = (status: string) => {
     switch (status) {
@@ -36,6 +37,15 @@ export default function DashboardPage() {
     useEffect(() => {
         setActiveTab('dashboard');
     }, [setActiveTab]);
+
+    const [isMobile, setIsMobile] = React.useState(false);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 1024);
+        handleResize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // ── Fetch Data ─────────────────────────────────────────────────────────
 
@@ -90,8 +100,9 @@ export default function DashboardPage() {
     ];
 
     return (
-        <div style={{ padding: '28px 32px', maxWidth: 1200, height: '100vh', overflowY: 'auto' }}>
-            {/* ── Header ── */}
+        <ErrorBoundary>
+            <div style={{ padding: '28px 32px', maxWidth: 1200, height: '100vh', overflowY: 'auto' }}>
+                {/* ── Header ── */}
             <div style={{ marginBottom: 28 }} className="animate-fade-in">
                 <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>
                     Welcome back, {user?.name || 'User'}
@@ -169,7 +180,7 @@ export default function DashboardPage() {
             </div>
 
             {/* ── Content Grid ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 340px', gap: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) 340px', gap: 24 }}>
                 
                 {/* ── RECENT RUNS ── */}
                 <div className="glass-card animate-fade-in" style={{ padding: 0, overflow: 'hidden' }}>
@@ -188,7 +199,11 @@ export default function DashboardPage() {
                         </button>
                     </div>
                     {runsLoading ? (
-                        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Loading recent runs...</div>
+                        <div style={{ padding: 20 }}>
+                            <LoadingSkeleton />
+                            <LoadingSkeleton />
+                            <LoadingSkeleton />
+                        </div>
                     ) : recentRuns?.length === 0 ? (
                         <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)' }}>
                             <p style={{ fontSize: 14 }}>No runs recorded yet.</p>
@@ -264,7 +279,10 @@ export default function DashboardPage() {
                         </div>
                         <div style={{ padding: '12px' }}>
                             {driftLoading ? (
-                                <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>Checking for drift...</p>
+                                <div style={{ padding: '12px' }}>
+                                    <LoadingSkeleton />
+                                    <LoadingSkeleton />
+                                </div>
                             ) : driftAlerts?.length === 0 ? (
                                 <div style={{ padding: '24px 12px', textAlign: 'center' }}>
                                     <CheckCircle2 size={24} color="#10b981" style={{ margin: '0 auto 12px', opacity: 0.5 }} />
@@ -319,5 +337,6 @@ export default function DashboardPage() {
                 </div>
             </div>
         </div>
+        </ErrorBoundary>
     );
 }

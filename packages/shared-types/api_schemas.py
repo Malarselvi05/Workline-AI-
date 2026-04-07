@@ -102,6 +102,13 @@ class WorkflowDetailResponse(WorkflowResponse):
     edges: List[Dict[str, Any]] = []
 
 
+# ── Domain Packs ──────────────────────────────────────────────────────────
+
+class DomainPackResponse(BaseModel):
+    name: str
+    status: str  # 'installed' | 'available'
+
+
 # ── Auth ───────────────────────────────────────────────────────────────────
 
 class LoginRequest(BaseModel):

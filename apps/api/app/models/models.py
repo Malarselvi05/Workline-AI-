@@ -138,6 +138,16 @@ class DriftAlert(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class DomainPack(Base):
+    __tablename__ = "domain_packs"
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(Integer, ForeignKey("organisations.id"), nullable=True)
+    name = Column(String)  # e.g., 'mechanical'
+    status = Column(String) # 'installed' or 'available'
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class Conversation(Base):
     __tablename__ = "conversations"
     id = Column(Integer, primary_key=True, index=True)

@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { Search, ChevronDown, ChevronRight, GripVertical, Package, Eye, EyeOff } from 'lucide-react';
 import { BLOCK_DEFINITIONS, BlockDef, CATEGORY_COLORS, useCanvasStore } from '@/stores/canvasStore';
+import { useWorkspaceStore } from '@/stores/workspaceStore';
 
 const STANDARD_CATEGORIES = ['input', 'extract', 'transform', 'decide', 'ai', 'human', 'act'];
 
@@ -22,10 +23,18 @@ export default function BlockPalette() {
     const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set(STANDARD_CATEGORIES));
     const domainPackVisible = useCanvasStore((s) => s.domainPackVisible);
     const toggleDomainPack = useCanvasStore((s) => s.toggleDomainPack);
+    const installedPacks = useWorkspaceStore((s) => s.installedPacks);
+    const hasMechanical = installedPacks.includes('mechanical');
 
     const visibleBlocks = useMemo(() => {
-        return BLOCK_DEFINITIONS.filter((b) => domainPackVisible || !b.isDomainPack);
-    }, [domainPackVisible]);
+        return BLOCK_DEFINITIONS.filter((b) => {
+            if (b.isDomainPack) {
+                if (b.category === 'mechanical' && !hasMechanical) return false;
+                if (!domainPackVisible) return false;
+            }
+            return true;
+        });
+    }, [domainPackVisible, hasMechanical]);
 
     const filtered = useMemo(() => {
         if (!search) return visibleBlocks;
@@ -83,28 +92,30 @@ export default function BlockPalette() {
                         Block Palette
                     </p>
                     {/* Domain pack toggle */}
-                    <button
-                        onClick={toggleDomainPack}
-                        title={domainPackVisible ? 'Hide domain pack blocks' : 'Show domain pack blocks'}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            background: domainPackVisible ? 'rgba(6,182,212,0.12)' : 'transparent',
-                            border: `1px solid ${domainPackVisible ? 'rgba(6,182,212,0.3)' : 'var(--border-default)'}`,
-                            borderRadius: 5,
-                            padding: '3px 7px',
-                            cursor: 'pointer',
-                            fontSize: 10,
-                            fontWeight: 600,
-                            color: domainPackVisible ? '#06b6d4' : 'var(--text-muted)',
-                            transition: 'all 0.15s',
-                        }}
-                    >
-                        <Package size={10} />
-                        Pack
-                        {domainPackVisible ? <Eye size={9} /> : <EyeOff size={9} />}
-                    </button>
+                    {hasMechanical && (
+                        <button
+                            onClick={toggleDomainPack}
+                            title={domainPackVisible ? 'Hide domain pack blocks' : 'Show domain pack blocks'}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                background: domainPackVisible ? 'rgba(6,182,212,0.12)' : 'transparent',
+                                border: `1px solid ${domainPackVisible ? 'rgba(6,182,212,0.3)' : 'var(--border-default)'}`,
+                                borderRadius: 5,
+                                padding: '3px 7px',
+                                cursor: 'pointer',
+                                fontSize: 10,
+                                fontWeight: 600,
+                                color: domainPackVisible ? '#06b6d4' : 'var(--text-muted)',
+                                transition: 'all 0.15s',
+                            }}
+                        >
+                            <Package size={10} />
+                            Pack
+                            {domainPackVisible ? <Eye size={9} /> : <EyeOff size={9} />}
+                        </button>
+                    )}
                 </div>
                 <div style={{ position: 'relative' }}>
                     <Search size={13} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
@@ -228,7 +239,7 @@ export default function BlockPalette() {
             </div>
 
             {/* Domain pack notice */}
-            {!domainPackVisible && (
+            {hasMechanical && !domainPackVisible && (
                 <div
                     style={{
                         padding: '8px 12px',
@@ -240,7 +251,7 @@ export default function BlockPalette() {
                 >
                     <Package size={12} style={{ color: 'var(--text-muted)' }} />
                     <p style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                        4 domain pack blocks hidden.{' '}
+                        Domain pack blocks hidden.{' '}
                         <button
                             onClick={toggleDomainPack}
                             style={{ background: 'none', border: 'none', color: '#06b6d4', cursor: 'pointer', fontSize: 10, fontWeight: 600, padding: 0 }}

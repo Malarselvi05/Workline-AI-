@@ -150,6 +150,11 @@ export interface DriftAlert {
     created_at: string;
 }
 
+export interface DomainPack {
+    name: string;
+    status: 'installed' | 'available';
+}
+
 // ── Internal fetch wrapper ─────────────────────────────────────────────────
 
 function getAuthHeaders(): HeadersInit {
@@ -368,4 +373,18 @@ export async function setSchedule(
 
 export async function deleteSchedule(workflowId: number): Promise<void> {
     await request(`/workflows/${workflowId}/schedule`, { method: 'DELETE' });
+}
+
+// ── Domain Packs ──────────────────────────────────────────────────────────
+
+export async function listPacks(): Promise<DomainPack[]> {
+    return request<DomainPack[]>('/packs');
+}
+
+export async function installPack(name: string): Promise<any> {
+    return request(`/packs/${name}/install`, { method: 'POST' });
+}
+
+export async function uninstallPack(name: string): Promise<any> {
+    return request(`/packs/${name}/uninstall`, { method: 'POST' });
 }

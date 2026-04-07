@@ -29,7 +29,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from app.routers import auth, workflows, planning, blocks, runs, ws, dashboard, schedules
+from app.routers import auth, workflows, planning, blocks, runs, ws, dashboard, schedules, packs
 
 app = FastAPI(
     title="WorkLine AI API",
@@ -92,6 +92,7 @@ app.include_router(blocks.router)
 app.include_router(runs.router)
 app.include_router(ws.router)
 app.include_router(schedules.router)
+app.include_router(packs.router)
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 
 @app.get("/")

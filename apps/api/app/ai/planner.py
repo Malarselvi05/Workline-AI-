@@ -10,6 +10,7 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 from collections import deque
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -115,16 +116,22 @@ def _compute_layout(nodes: List[Dict], edges: List[Dict]) -> List[Dict]:
 # ---------------------------------------------------------------------------
 # DAG validation
 # ---------------------------------------------------------------------------
-def _validate_dag(nodes: List[Dict], edges: List[Dict]) -> Optional[str]:
+def _validate_dag(nodes: List[Dict], edges: List[Dict], installed_packs: set) -> Optional[str]:
     """Returns an error string if invalid, None if valid."""
     node_ids = {n["id"] for n in nodes}
 
+    valid_categories = {"Input", "Extract", "Transform", "Decide", "AI", "Human", "Act", "Output"}
+    if "mechanical" in installed_packs:
+        valid_categories.add("Mechanical")
+        
+    valid_types = {k for k, v in BLOCK_REGISTRY.items() if v['category'] in valid_categories}
+
     # 1) Check block types
     for n in nodes:
-        if n.get("type") not in VALID_BLOCK_TYPES:
+        if n.get("type") not in valid_types:
             return (
-                f"Block type '{n.get('type')}' is not in the block registry. "
-                f"Valid types: {', '.join(sorted(VALID_BLOCK_TYPES))}"
+                f"Block type '{n.get('type')}' is not allowed or not in registry. "
+                f"Valid types: {', '.join(sorted(valid_types))}"
             )
 
     # 2) Check edge references
@@ -158,11 +165,17 @@ def _validate_dag(nodes: List[Dict], edges: List[Dict]) -> Optional[str]:
 # ---------------------------------------------------------------------------
 # Prompt builders
 # ---------------------------------------------------------------------------
-def _build_system_prompt() -> str:
-    registry_lines = "\n".join(
-        f"  - `{btype}` ({info['category']}): {info['description']}"
-        for btype, info in BLOCK_REGISTRY.items()
-    )
+def _build_system_prompt(installed_packs: set) -> str:
+    valid_categories = {"Input", "Extract", "Transform", "Decide", "AI", "Human", "Act", "Output"}
+    if "mechanical" in installed_packs:
+        valid_categories.add("Mechanical")
+
+    registry_lines = []
+    for btype, info in BLOCK_REGISTRY.items():
+        if info['category'] in valid_categories:
+            registry_lines.append(f"  - `{btype}` ({info['category']}): {info['description']}")
+            
+    registry_lines_str = "\n".join(registry_lines)
     return f"""You are WorkLine AI — a senior automation architect specialising in no-code, graph-based workflow design.
 
 ## Your Role
@@ -170,7 +183,7 @@ Convert the user's plain-English business goal into a JSON workflow graph.
 
 ## Available Block Registry
 Only use block `type` values from this list (exact string match required):
-{registry_lines}
+{registry_lines_str}
 
 ## Output Format (strict JSON — no markdown fences)
 {{
@@ -283,12 +296,12 @@ class GroqPlanner:
         return json.loads(raw_content)
 
     # ------------------------------------------------------------------
-    def _parse_and_validate(self, raw: Dict[str, Any]) -> tuple[Dict[str, Any], Optional[str]]:
+    def _parse_and_validate(self, raw: Dict[str, Any], installed_packs: set) -> tuple[Dict[str, Any], Optional[str]]:
         """Returns (parsed_proposal, error_string_or_None)."""
         nodes = raw.get("nodes", [])
         edges = raw.get("edges", [])
 
-        err = _validate_dag(nodes, edges)
+        err = _validate_dag(nodes, edges, installed_packs)
         if err:
             return raw, err
 
@@ -334,13 +347,22 @@ class GroqPlanner:
             db.commit()
             db.refresh(convo)
 
+        # --- Fetch installed domain packs ---
+        from app.models.models import DomainPack
+        installed_packs = {
+            p.name for p in db.query(DomainPack).filter(
+                DomainPack.org_id == convo.org_id, 
+                DomainPack.status == "installed"
+            ).all()
+        }
+
         # --- Build message history ---
         history = db.query(ConversationTurn).filter(
             ConversationTurn.conversation_id == convo.id
         ).order_by(ConversationTurn.created_at).all()
 
         messages: List[Dict[str, str]] = [
-            {"role": "system", "content": _build_system_prompt()}
+            {"role": "system", "content": _build_system_prompt(installed_packs)}
         ]
         messages.extend(_history_to_messages(history))
         messages.append({"role": "user", "content": _build_user_message(goal)})
@@ -357,7 +379,7 @@ class GroqPlanner:
         # --- First attempt ---
         try:
             raw = self._call_llm(messages)
-            proposal, err = self._parse_and_validate(raw)
+            proposal, err = self._parse_and_validate(raw, installed_packs)
         except Exception as e:
             logger.error(f"LLM call failed: {e}")
             raise RuntimeError(f"LLM call failed: {e}") from e
@@ -377,7 +399,7 @@ class GroqPlanner:
             ]
             try:
                 raw = self._call_llm(retry_messages)
-                proposal, err = self._parse_and_validate(raw)
+                proposal, err = self._parse_and_validate(raw, installed_packs)
             except Exception as e:
                 logger.error(f"LLM retry call failed: {e}")
                 raise RuntimeError(f"LLM retry failed: {e}") from e

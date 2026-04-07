@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Rocket, X, AlertCircle, ShieldCheck } from 'lucide-react';
 import { deployWorkflow } from '@/lib/api';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
@@ -23,9 +23,14 @@ export default function DeployModal({
     const { updateWorkflowStatus } = useWorkspaceStore();
     const [deploying, setDeploying] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const modalRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (open) { setError(null); setDeploying(false); }
+        if (open) { 
+            setError(null); 
+            setDeploying(false); 
+            setTimeout(() => modalRef.current?.focus(), 80);
+        }
     }, [open]);
 
     const handleDeploy = async () => {
@@ -65,8 +70,10 @@ export default function DeployModal({
         >
             <div
                 className="glass-card animate-fade-in"
-                style={{ width: 420, padding: 28, position: 'relative' }}
+                style={{ width: 420, padding: 28, position: 'relative', outline: 'none' }}
                 onKeyDown={handleKeyDown}
+                tabIndex={0}
+                ref={modalRef}
             >
                 {/* Header */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>

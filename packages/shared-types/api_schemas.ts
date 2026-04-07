@@ -90,6 +90,13 @@ export interface WorkflowDetail extends Workflow {
     edges: WorkflowEdge[];
 }
 
+// ── Domain Packs ──────────────────────────────────────────────────────────
+
+export interface DomainPack {
+    name: string;
+    status: 'installed' | 'available';
+}
+
 // ── Auth ──────────────────────────────────────────────────────────────────
 
 export interface LoginRequest {

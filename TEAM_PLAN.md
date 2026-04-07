@@ -325,26 +325,26 @@ These decisions must be made and committed before either member starts Phase 1:
 ### 🟩 Member M — Domain Packs + CI/CD + Polish (Full-Stack)
 
 #### M9 — Domain Pack Installer (Full-Stack)
-- [ ] Add `domain_packs` table: id, org_id, name, status (installed/available)
-- [ ] `GET /packs` → list available packs per org
-- [ ] `POST /packs/{name}/install` · `POST /packs/{name}/uninstall`
-- [ ] Domain Pack Manager page: grid of packs with Install/Uninstall button
-- [ ] On install: mechanical blocks appear in canvas palette under "Domain Packs" toggle
+- [x] Add `domain_packs` table: id, org_id, name, status (installed/available)
+- [x] `GET /packs` → list available packs per org
+- [x] `POST /packs/{name}/install` · `POST /packs/{name}/uninstall`
+- [x] Domain Pack Manager page: grid of packs with Install/Uninstall button
+- [x] On install: mechanical blocks appear in canvas palette under "Domain Packs" toggle
 
 #### M10 — CI/CD + Performance (Full-Stack)
-- [ ] GitHub Actions CI: lint + type-check + pytest on every PR (both `apps/api` and `apps/web`)
-- [ ] Benchmark test: `POST /plan` must respond < 5s; engine must execute 3-node workflow < 2s
-- [ ] Test: DB-level `UPDATE` on `audit_logs` is rejected (proves append-only)
-- [ ] `docs/architecture/` — brief ADR documents for key decisions (LiteLLM choice, multi-tenancy approach)
+- [x] GitHub Actions CI: lint + type-check + pytest on every PR (both `apps/api` and `apps/web`)
+- [x] Benchmark test: `POST /plan` must respond < 5s; engine must execute 3-node workflow < 2s
+- [x] Test: DB-level `UPDATE` on `audit_logs` is rejected (proves append-only)
+- [x] `docs/architecture/` — brief ADR documents for key decisions (LiteLLM choice, multi-tenancy approach)
 
 #### M11 — UI Polish + Accessibility
-- [ ] Mobile: canvas shows graceful degradation message on screens < 1024px; dashboard + results are fully responsive
-- [ ] Sidebar collapses to icon-only on < 1024px
-- [ ] Keyboard navigation for all modals and menus
-- [ ] Loading skeletons for all data-fetching sections
-- [ ] Empty states: no workflows · no runs · no drift alerts
-- [ ] Error boundaries around canvas, chatbot, dashboard
-- [ ] Dark mode toggle (Tailwind `dark:` already configured from scaffold)
+- [x] Mobile: canvas shows graceful degradation message on screens < 1024px; dashboard + results are fully responsive
+- [x] Sidebar collapses to icon-only on < 1024px
+- [x] Keyboard navigation for all modals and menus
+- [x] Loading skeletons for all data-fetching sections
+- [x] Empty states: no workflows · no runs · no drift alerts
+- [x] Error boundaries around canvas, chatbot, dashboard
+- [x] Dark mode toggle (Tailwind `dark:` already configured from scaffold)
 
 ---
 

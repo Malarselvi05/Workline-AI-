@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { listWorkflows, getMe, Workflow, User } from '@/lib/api';
+import { listWorkflows, getMe, listPacks, Workflow, User, DomainPack } from '@/lib/api';
 
 interface WorkspaceState {
     user: User | null;
@@ -19,6 +19,8 @@ interface WorkspaceState {
     updateWorkflowStatus: (id: number, status: 'draft' | 'active' | 'archived') => void;
     toggleSidebar: () => void;
     fetchWorkflows: () => Promise<void>;
+    installedPacks: string[];
+    fetchPacks: () => Promise<void>;
     reset: () => void;
 }
 
@@ -29,6 +31,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     activeTab: 'dashboard',
     sidebarCollapsed: false,
     loading: false,
+    installedPacks: [],
 
     setUser: (user) => set({ user }),
 
@@ -86,11 +89,21 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         }
     },
 
+    fetchPacks: async () => {
+        try {
+            const packs = await listPacks();
+            set({ installedPacks: packs.filter(p => p.status === 'installed').map(p => p.name) });
+        } catch (err) {
+            console.error('Failed to fetch domain packs:', err);
+        }
+    },
+
     reset: () => set({
         user: null,
         workflows: [],
         activeWorkflowId: null,
         activeTab: 'dashboard',
-        loading: false
+        loading: false,
+        installedPacks: []
     }),
 }));
