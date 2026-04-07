@@ -102,8 +102,7 @@
 *   **Expected Output**: 
     1.  `ScheduledTrigger` record created in DB.
     2.  Celery Beat dynamically registers the task.
-    3.  `next_run_at` is correctly calculated and displayed.
-*   **Failure Conditions**:
+    3.  `next_run_at` is correctly calculated and displayed **Failure Conditions**:
     1.  **Invalid Cron**: User enters `* * * 100 *`, resulting in a backend validation error (should be handled in `SchedulesRouter`).
     2.  **Duplicate Registration**: Multiple beat jobs for the same workflow id.
 
