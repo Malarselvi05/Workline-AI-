@@ -30,6 +30,7 @@ jobs:
         env:
           DATABASE_URL: "sqlite:///:memory:"
           WORKLINE_MODE: "cloud"
+          PYTHONPATH: .
         run: |
           pytest tests/
 
