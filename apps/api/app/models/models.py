@@ -91,6 +91,7 @@ class RunNodeState(Base):
     __tablename__ = "run_node_states"
     id = Column(Integer, primary_key=True, index=True)
     run_id = Column(Integer, ForeignKey("workflow_runs.id"))
+    org_id = Column(Integer, ForeignKey("organisations.id"), nullable=True)
     node_id = Column(String)
     status = Column(String)  # pending, running, completed, failed, skipped
     started_at = Column(DateTime, default=datetime.utcnow)

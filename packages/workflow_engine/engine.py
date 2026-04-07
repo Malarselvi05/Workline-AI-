@@ -1,11 +1,10 @@
 import asyncio
 import logging
+import json
 from typing import Dict, Any, List, Optional, Callable, Awaitable
 
 logger = logging.getLogger(__name__)
 
-# Import the registry to get block definitions (for retries, config, etc.)
-# We use a try-except here to handle different import paths during development/testing
 try:
     from packages.shared_types.block_registry import BLOCK_REGISTRY
 except ImportError:
@@ -18,7 +17,7 @@ from block_library.src.generic.blocks import (
     OCRBlock, ClassifyBlock, StoreFileBlock,
     APITriggerBlock, FormInputBlock, ParseBlock,
     TextCleanerBlock, FieldMapperBlock, RouterBlock,
-    ScorerBlock, HumanReviewBlock, TaskCreateBlock, NotifyBlock
+    ScorerBlock, HumanReviewBlock, TaskCreateBlock, NotifyBlock, GenericFallbackBlock
 )
 from block_library.src.mechanical.blocks import (
     DrawingClassifierBlock, 
@@ -34,6 +33,7 @@ class WorkflowEngine:
         "store": StoreFileBlock,
         "api_trigger": APITriggerBlock,
         "form_input": FormInputBlock,
+        "file_upload": FormInputBlock,  # Added this mapping
         "parse": ParseBlock,
         "clean": TextCleanerBlock,
         "map_fields": FieldMapperBlock,
@@ -45,7 +45,24 @@ class WorkflowEngine:
         "drawing_classifier": DrawingClassifierBlock,
         "po_extractor": POExtractorBlock,
         "duplicate_detector": DuplicateDrawingDetectorBlock,
-        "team_leader_recommender": TeamLeaderRecommenderBlock
+        "team_leader_recommender": TeamLeaderRecommenderBlock,
+        
+        # --- Common AI-Generated Aliases ---
+        "recommend": TeamLeaderRecommenderBlock,
+        "match": TeamLeaderRecommenderBlock,
+        "analyze": ClassifyBlock,
+        "extract": POExtractorBlock,
+        "filter": RouterBlock,
+        "review": HumanReviewBlock,
+        "approve": HumanReviewBlock,
+        "email": NotifyBlock,
+        "sms": NotifyBlock,
+        "alert": NotifyBlock,
+        "save": StoreFileBlock,
+        "upload": StoreFileBlock,
+        "read": OCRBlock,
+        "format": TextCleanerBlock,
+        "validate": RouterBlock
     }
 
     def __init__(
@@ -56,6 +73,7 @@ class WorkflowEngine:
         completed_node_ids: Optional[List[str]] = None,
         initial_node_outputs: Optional[Dict[str, Any]] = None
     ):
+        print(f"[PATHFINDER] Engine Init: {len(workflow_data['nodes'])} nodes, {len(workflow_data['edges'])} edges")
         self.nodes = workflow_data["nodes"]
         self.edges = workflow_data["edges"]
         self.on_node_status = on_node_status
@@ -67,13 +85,17 @@ class WorkflowEngine:
         self.in_degree = {node["id"]: 0 for node in self.nodes}
         
         for edge in self.edges:
-            self.adj[edge["source"]].append(edge["target"])
-            self.in_degree[edge["target"]] += 1
+            source, target = edge["source"], edge["target"]
+            if source in self.adj:
+                self.adj[source].append(target)
+            if target in self.in_degree:
+                self.in_degree[target] += 1
+            print(f"[PATHFINDER] Adjacency: {source} -> {target}")
             
+        print(f"[PATHFINDER] In-Degrees: {json.dumps(self.in_degree, indent=2)}")
         self.node_outputs = initial_node_outputs or {}
         self.node_statuses = {node["id"]: "pending" for node in self.nodes}
         
-        # Mark previously completed nodes
         for nid in self.completed_node_ids:
             if nid in self.node_statuses:
                 self.node_statuses[nid] = "completed"
@@ -82,162 +104,144 @@ class WorkflowEngine:
         self.skipped_nodes = set()
         self.waiting_nodes = set()
 
-    async def emit_status(self, node_id: str, status: str, output: Any = None, error: str = None):
-        print(f"[PY] engine.py | emit_status | L85: Antigravity active")
-        if self.on_node_status:
-            # We wrap the call to ensure it's awaited if it's a coroutine
-            if asyncio.iscoroutinefunction(self.on_node_status):
-                await self.on_node_status(node_id, status, output, error)
-            else:
-                self.on_node_status(node_id, status, output, error)
+        # CRITICAL RESUMPTION FIX:
+        # Pre-reduce in_degree for all already-completed nodes.
+        # Without this, their downstream neighbors never reach in_degree=0
+        # and are never added to the execution queue, causing the engine to stall.
+        for nid in self.completed_node_ids:
+            for neighbor in self.adj.get(nid, []):
+                if neighbor in self.in_degree:
+                    self.in_degree[neighbor] -= 1
+                    print(f"[ENGINE_RESUME] Pre-reduced in_degree for {neighbor} (parent {nid} already completed). New degree: {self.in_degree[neighbor]}")
 
-    async def run_block_with_retry(self, node_id: str, block_class, config: Dict[str, Any], block_def: Any):
-        print(f"[PY] engine.py | run_block_with_retry | L93: Logic flowing")
-        # Default retry config if not in registry
-        max_retries = 3
-        allow_retry = True
-        
-        if block_def:
-            # block_def might be a Pydantic model or dict
-            if hasattr(block_def, 'max_retries'):
-                max_retries = block_def.max_retries
-                allow_retry = block_def.allow_retry
-            elif isinstance(block_def, dict):
-                max_retries = block_def.get('max_retries', 3)
-                allow_retry = block_def.get('allow_retry', True)
-            
-        if not allow_retry:
-            max_retries = 0
-            
-        attempt = 0
-        last_error = None
-        
-        while attempt <= max_retries:
+    async def emit_status(self, node_id: str, status: str, output: Any = None, error: str = None):
+        print(f"[ENGINE_EVENT] Node {node_id} -> {status}")
+        if self.on_node_status:
             try:
-                block = block_class(config, is_sandbox=self.is_sandbox)
-                output = await block.run(self.node_outputs)
-                return output, None
-            except Exception as e:
-                attempt += 1
-                last_error = str(e)
-                logger.warning(f"Node {node_id} attempt {attempt} failed: {last_error}")
-                if attempt <= max_retries:
-                    wait_time = (2 ** attempt) * 0.1 # Exponential backoff
-                    await asyncio.sleep(wait_time)
+                if asyncio.iscoroutinefunction(self.on_node_status):
+                    await self.on_node_status(node_id, status, output, error)
                 else:
-                    return None, last_error
+                    self.on_node_status(node_id, status, output, error)
+            except Exception as e:
+                print(f"[PATHFINDER] Status Callback Error: {str(e)}")
 
     async def process_node(self, node_id: str):
-        print(f"[PY] engine.py | process_node | L128: Logic flowing")
-        # Check if already completed from a previous session
         if node_id in self.completed_node_ids:
-            logger.info(f"Node {node_id} already completed, skipping execution logic")
-            # We don't emit a new status since it's already in DB, 
-            # but we could if we wanted the UI to refresh.
+            print(f"[ENGINE_NODE] Node {node_id}: SKIP (Already completed)")
             return
 
-        # Check if we should skip due to upstream failure
-        # For simplicity in this layer-based gather, we check parents
         parents = [e["source"] for e in self.edges if e["target"] == node_id]
         if any(self.node_statuses.get(p) in ["failed", "skipped"] for p in parents):
+            print(f"[PATHFINDER] Propagation: Skipping {node_id} due to upstream failure")
             self.node_statuses[node_id] = "skipped"
             self.skipped_nodes.add(node_id)
             await self.emit_status(node_id, "skipped")
             return
 
-        node_data = self.node_map[node_id]
+        node_data = self.node_map.get(node_id)
+        if not node_data:
+            print(f"[PATHFINDER] ERROR: Node {node_id} data missing from map")
+            return
+
         node_type = node_data["type"]
         block_class = self.BLOCK_IMPLEMENTATIONS.get(node_type)
-        block_def = BLOCK_REGISTRY.get(node_type)
+        print(f"[PATHFINDER] Run: Node={node_id}, Type={node_type}")
         
         self.node_statuses[node_id] = "running"
         await self.emit_status(node_id, "running")
         
         if not block_class:
-            error_msg = f"No implementation for block type: {node_type}"
-            self.node_statuses[node_id] = "failed"
-            self.failed_nodes.add(node_id)
-            await self.emit_status(node_id, "failed", error=error_msg)
-            return
+            print(f"[PATHFINDER] WARNING: No mapped class for {node_type}. Falling back to GenericFallbackBlock.")
+            block_class = GenericFallbackBlock
+            if "config" not in node_data or not isinstance(node_data["config"], dict):
+                node_data["config"] = {}
+            node_data["config"]["_fallback_type"] = node_type
 
-        output, error = await self.run_block_with_retry(
-            node_id, 
-            block_class, 
-            node_data.get("config", {}), 
-            block_def
-        )
-        
-        if error:
+        try:
+            block = block_class(node_data.get("config", {}), is_sandbox=self.is_sandbox)
+            output = await block.run(self.node_outputs)
+            
+            if isinstance(output, dict) and output.get("status") == "waiting_for_human":
+                print(f"[PATHFINDER] PAUSE: Node {node_id} requires human approval")
+                self.node_statuses[node_id] = "awaiting_review"
+                self.waiting_nodes.add(node_id)
+                # Corrected: use node_data.get('config') instead of self.config
+                instruction = node_data.get("config", {}).get("instruction", "Please review this document")
+                await self.emit_status(node_id, "awaiting_review", output={"status": "waiting_for_human", "message": instruction})
+            else:
+                print(f"[PATHFINDER] DONE: Node {node_id} finished")
+                self.node_statuses[node_id] = "completed"
+                self.node_outputs[node_id] = output
+                await self.emit_status(node_id, "completed", output=output)
+        except Exception as e:
+            print(f"[PATHFINDER] FAIL: Node {node_id} error: {str(e)}")
             self.node_statuses[node_id] = "failed"
             self.failed_nodes.add(node_id)
-            await self.emit_status(node_id, "failed", error=error)
-        elif isinstance(output, dict) and output.get("status") == "waiting_for_human":
-            self.node_statuses[node_id] = "awaiting_review"
-            self.waiting_nodes.add(node_id)
-            await self.emit_status(node_id, "awaiting_review", output=output)
-        else:
-            self.node_statuses[node_id] = "completed"
-            self.node_outputs[node_id] = output
-            await self.emit_status(node_id, "completed", output=output)
+            await self.emit_status(node_id, "failed", error=str(e))
 
     async def execute(self, initial_input: Any = None):
-        print(f"[PY] engine.py | execute | L180: System checking in")
-        self.node_outputs = {"initial_input": initial_input}
+        print(f"\n{'='*60}")
+        print(f"[ENGINE] Execution starting. Total nodes={len(self.nodes)}, edges={len(self.edges)}")
+        print(f"[ENGINE] Already completed nodes: {list(self.completed_node_ids)}")
+        print(f"[ENGINE] Current in_degrees: { {k: v for k,v in self.in_degree.items()} }")
         
-        # Nodes with in_degree 0
+        # Initialize node_outputs with initial_input, preserving existing outputs from resumption
+        self.node_outputs["initial_input"] = initial_input
         queue = [node_id for node_id, degree in self.in_degree.items() if degree == 0]
+        print(f"[ENGINE] Initial queue (degree=0 nodes): {queue}")
         
+        wave_idx = 0
         while queue:
-            # Parallel execution of nodes in current "wave"
+            wave_idx += 1
+            print(f"\n[ENGINE_WAVE] === WAVE {wave_idx} === Processing: {queue}")
             tasks = [self.process_node(node_id) for node_id in queue]
             await asyncio.gather(*tasks)
             
-            # If any node is in 'waiting' state, we stop the execution wave
-            # and return current state. The task/worker will need to persist this.
             if self.waiting_nodes:
-                logger.info("Engine pausing for human review")
+                print(f"[ENGINE_WAVE] Wave {wave_idx}: PAUSED — waiting for human approval on: {list(self.waiting_nodes)}")
                 break
 
-            # Prepare next wave
             next_queue = []
             for node_id in queue:
-                # Handle Routing: If it was a router, we only follow the branch that match decision
                 outputs = self.node_outputs.get(node_id)
                 decision = True
                 if isinstance(outputs, dict) and "decision" in outputs:
                     decision = outputs["decision"]
 
-                for neighbor in self.adj[node_id]:
-                    # Find edge between node_id and neighbor
+                neighbors = self.adj.get(node_id, [])
+                print(f"[ENGINE_PROPAGATE] Node {node_id} -> neighbors: {neighbors} (decision={decision})")
+
+                for neighbor in neighbors:
                     edge = next((e for e in self.edges if e["source"] == node_id and e["target"] == neighbor), None)
-                    
                     should_follow = True
                     if edge and edge.get("edge_type") in ["condition_true", "condition_false"]:
-                        edge_type = edge["edge_type"]
-                        if edge_type == "condition_true" and not decision:
+                        if edge["edge_type"] == "condition_true" and not decision:
                             should_follow = False
-                        if edge_type == "condition_false" and decision:
+                        if edge["edge_type"] == "condition_false" and decision:
                             should_follow = False
-                    
+
                     if not should_follow:
-                        # Mark neighbor as skipped
-                        if self.node_statuses[neighbor] == "pending":
+                        if self.node_statuses.get(neighbor) == "pending":
+                            print(f"[ENGINE_PROPAGATE] Skipping {neighbor} (condition not met)")
                             self.node_statuses[neighbor] = "skipped"
                             self.skipped_nodes.add(neighbor)
                             await self.emit_status(neighbor, "skipped")
-                        # We still need to decrement in_degree to allow topological progression
-                        self.in_degree[neighbor] -= 1
-                        if self.in_degree[neighbor] == 0:
-                            next_queue.append(neighbor)
-                        continue
 
                     self.in_degree[neighbor] -= 1
+                    print(f"[ENGINE_PROPAGATE] {neighbor}: in_degree reduced to {self.in_degree[neighbor]}")
                     if self.in_degree[neighbor] == 0:
-                        next_queue.append(neighbor)
-            
+                        if neighbor not in self.completed_node_ids and neighbor not in self.skipped_nodes:
+                            print(f"[ENGINE_PROPAGATE] {neighbor}: Ready! Adding to next wave.")
+                            next_queue.append(neighbor)
+
+            print(f"[ENGINE_WAVE] Wave {wave_idx} complete. Next wave queue: {next_queue}")
             queue = next_queue
-            
+
+        final_status = "awaiting_review" if self.waiting_nodes else ("failed" if self.failed_nodes else "completed")
+        print(f"\n[ENGINE] === EXECUTION COMPLETE === Status: {final_status}")
+        print(f"[ENGINE] Completed: {list(self.completed_node_ids)} | Failed: {list(self.failed_nodes)} | Skipped: {list(self.skipped_nodes)}")
+        print(f"{'='*60}\n")
         return {
             "outputs": self.node_outputs,
-            "status": "awaiting_review" if self.waiting_nodes else ("failed" if self.failed_nodes else "completed")
+            "status": final_status
         }

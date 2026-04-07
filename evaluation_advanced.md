@@ -62,7 +62,7 @@
 ### Feature 5: Human Review Flow (Member M)
 *   **Use Case**: A workflow requires manual approval for sensitive data extraction.
 *   **Test Case**: Execute a workflow with a `HumanReviewBlock`.
-*   **Expected Output**: 
+*   **Expected Output**:  
     1.  Execution pauses at the `human_review` node.
     2.  `WorkflowRun` status becomes `awaiting_review`.
     3.  Workspace WebSocket fires a notification; Sidebar tab shows an "Awaiting Review" badge.

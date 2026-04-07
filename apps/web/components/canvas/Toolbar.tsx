@@ -97,11 +97,45 @@ export default function Toolbar({ onZoomFit }: ToolbarProps) {
 
     // ── Simulate (sandbox animation) ─────────────────────────────────────────
     const handleSimulate = async () => {
-      console.log("[JS] Toolbar.tsx | handleSimulate | L97: System checking in");
-      console.log("[JS] Toolbar.tsx | handleSimulate | L95: Data processing");
         if (nodes.length === 0) { showToast('Canvas is empty.', 'error'); return; }
         clearRunStatus();
-        for (const node of nodes) {
+        
+        // Topological sort for realistic simulation order
+        const inDegree: Record<string, number> = {};
+        const adj: Record<string, string[]> = {};
+        nodes.forEach(n => { inDegree[n.id] = 0; adj[n.id] = []; });
+        edges.forEach(e => {
+            if (inDegree[e.target] !== undefined) inDegree[e.target]++;
+            if (adj[e.source]) adj[e.source].push(e.target);
+        });
+
+        const sortedNodes = [];
+        // Strictly get nodes with 0 incoming edges (starting points)
+        const queue: string[] = nodes
+            .filter(n => inDegree[n.id] === 0)
+            .map(n => n.id)
+            .sort((a, b) => {
+                 // Stable sort by insertion order if multiple roots exist
+                 const idxA = nodes.findIndex(n => n.id === a);
+                 const idxB = nodes.findIndex(n => n.id === b);
+                 return idxA - idxB;
+            });
+
+        while (queue.length > 0) {
+            const currId = queue.shift()!;
+            const node = nodes.find(n => n.id === currId);
+            if (node) sortedNodes.push(node);
+            for (const neighbor of adj[currId] || []) {
+                inDegree[neighbor]--;
+                if (inDegree[neighbor] === 0) queue.push(neighbor);
+            }
+        }
+        
+        // Append any remaining disconnected/cycled nodes so they still simulate
+        const sortedIds = new Set(sortedNodes.map(n => n.id));
+        nodes.forEach(n => { if (!sortedIds.has(n.id)) sortedNodes.push(n); });
+
+        for (const node of sortedNodes) {
             setRunStatus(node.id, 'running');
             await new Promise((r) => setTimeout(r, 500));
             setRunStatus(node.id, Math.random() > 0.1 ? 'success' : 'failed');

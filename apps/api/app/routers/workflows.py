@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from app.schemas.workflow import WorkflowCreate, WorkflowResponse, WorkflowDetailResponse, NodeSchema, EdgeSchema, WorkflowBase
 from typing import List, Optional
@@ -85,7 +85,10 @@ async def list_workflows(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user)
 ):
-    return db.query(models.Workflow).filter(models.Workflow.org_id == current_user.org_id).all()
+    return db.query(models.Workflow).filter(
+        models.Workflow.org_id == current_user.org_id,
+        models.Workflow.status != "archived"
+    ).all()
 
 @router.get("/{workflow_id}", response_model=WorkflowDetailResponse)
 async def get_workflow(
@@ -182,6 +185,7 @@ async def deploy_workflow(
 
 @router.patch("/{workflow_id}", response_model=WorkflowResponse, dependencies=[Depends(require_editor)])
 async def update_workflow(
+    request: Request,
     workflow_id: int, 
     workflow_data: WorkflowBase, 
     db: Session = Depends(get_db),
@@ -191,8 +195,54 @@ async def update_workflow(
     if not workflow:
         raise HTTPException(status_code=404, detail="Workflow not found")
     
+    # Update basic info
     workflow.name = workflow_data.name
     workflow.description = workflow_data.description
+    
+    # Update nodes and edges if provided in the request
+    body = await request.json()
+    nodes_data = body.get("nodes", [])
+    edges_data = body.get("edges", [])
+    
+    print(f"[WORKFLOW_DEBUG] Save Request: WorkflowID={workflow_id}, NodesCount={len(nodes_data)}, EdgesCount={len(edges_data)}")
+    
+    if nodes_data or edges_data:
+        # Clear existing nodes and edges for this specific workflow
+        db.query(models.WorkflowEdge).filter(models.WorkflowEdge.workflow_id == workflow_id).delete()
+        db.query(models.WorkflowNode).filter(models.WorkflowNode.workflow_id == workflow_id).delete()
+        db.commit()
+        print(f"[WORKFLOW_DEBUG] DB Cleaned: Old nodes/edges removed for {workflow_id}")
+
+        # Add new nodes
+        for node_data in nodes_data:
+            print(f"[WORKFLOW_DEBUG] Saving Node: ID={node_data['id']}, Type={node_data['type']}")
+            node = models.WorkflowNode(
+                id=node_data['id'],
+                workflow_id=workflow_id,
+                org_id=current_user.org_id,
+                type=node_data['type'],
+                label=node_data.get('data', {}).get('label', ''),
+                config_json=node_data.get('data', {}),
+                position_x=node_data.get('position', {}).get('x', 0),
+                position_y=node_data.get('position', {}).get('y', 0)
+            )
+            db.add(node)
+
+        # Add new edges
+        for edge_data in edges_data:
+            print(f"[WORKFLOW_DEBUG] Saving Edge: {edge_data.get('source')} -> {edge_data.get('target')}")
+            edge = models.WorkflowEdge(
+                id=edge_data['id'],
+                workflow_id=workflow_id,
+                org_id=current_user.org_id,
+                source_node_id=edge_data['source'],
+                target_node_id=edge_data['target'],
+                edge_type=edge_data.get('type', 'default')
+            )
+            db.add(edge)
+    
+    db.commit()
+    print(f"[WORKFLOW_DEBUG] Save Complete: Workflow {workflow_id} synchronized.")
     
     log_action(
         db=db,
@@ -354,14 +404,23 @@ async def run_workflow(
         raise HTTPException(status_code=404, detail="Workflow not found")
         
     try:
-        # Try background task
-        task = execute_workflow_task.delay(workflow_id, org_id=current_user.org_id)
-        return {"task_id": task.id, "status": "queued", "mode": "background"}
+        # Default to synchronous in dev for immediate reliability
+        print(f"[WORKFLOW_DEBUG] API: Triggering sync run for workflow {workflow_id}")
+        from app.core.tasks import run_workflow_async
+        # Triggering reload
+        result = await run_workflow_async(workflow_id, None, False, current_user.org_id)
+        print(f"[WORKFLOW_DEBUG] API: Run completed with status {result.get('status')}")
+        # Ensure we return a format the frontend expects
+        return {
+            "status": result.get("status", "completed"), 
+            "mode": "synchronous", 
+            "run_id": result.get("run_id"),
+            "result": result.get("results")
+        }
     except Exception as e:
-        logger.warning(f"Celery not available, running synchronously: {e}")
-        # Synchronous fallback
-        result = execute_workflow_task(workflow_id, org_id=current_user.org_id)
-        return {"status": "completed", "mode": "synchronous", "result": result}
+        print(f"[WORKFLOW_DEBUG] API: FATAL ERROR during run: {str(e)}")
+        logger.error(f"Sync execution failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{workflow_id}/runs")
 async def list_workflow_runs(

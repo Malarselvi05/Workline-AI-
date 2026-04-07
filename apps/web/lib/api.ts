@@ -4,7 +4,7 @@
  * Types mirror packages/shared-types/api_schemas.ts — keep them in sync.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 

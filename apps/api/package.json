@@ -3,8 +3,8 @@
     "version": "0.1.0",
     "private": true,
     "scripts": {
-        "dev": "py -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8001",
-        "start": "python -m uvicorn app.main:app --host 127.0.0.1 --port 8001",
+        "dev": "py -m uvicorn app.main:app --reload --reload-dir app --reload-dir ../../packages --host 127.0.0.1 --port 8000",
+        "start": "python -m uvicorn app.main:app --host 127.0.0.1 --port 8000",
         "lint": "flake8 ."
     }
 }

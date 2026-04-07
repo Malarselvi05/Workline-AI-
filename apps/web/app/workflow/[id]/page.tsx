@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
-import { getWorkflow, runWorkflow, rollbackWorkflow, getWorkflowVersions, Workflow, WorkflowDetail, approveNode, rejectNode } from '@/lib/api';
+import { getWorkflow, runWorkflow, rollbackWorkflow, getWorkflowVersions, updateWorkflow, deleteWorkflow, Workflow, WorkflowDetail, approveNode, rejectNode } from '@/lib/api';
 import DeployModal from '@/components/canvas/DeployModal';
 import { useQuery } from '@tanstack/react-query';
 import { getWorkflowRuns, getRunDetail } from '@/lib/api';
@@ -66,12 +66,17 @@ export default function WorkflowDetailPage() {
     const [versionHistory, setVersionHistory] = useState<Workflow[]>([]);
     const [loadingDetail, setLoadingDetail] = useState(true);
 
-    const { setActiveWorkflow, workflows, updateWorkflowStatus, user } = useWorkspaceStore();
+    const { setActiveWorkflow, workflows, updateWorkflowStatus, renameWorkflowTab, fetchWorkflows, user } = useWorkspaceStore();
     const isEditor = user?.role === 'admin' || user?.role === 'editor';
+
+    // Settings form state
+    const [name, setName] = useState('');
+    const [description, setDescription] = useState('');
+    const [saving, setSaving] = useState(false);
+    const [deleting, setDeleting] = useState(false);
 
     // Prefer real detail from API; fall back to workspaceStore
     const workflow = workflowDetail ?? workflows.find((w) => w.id === workflowId);
-
 
     const showToast = (message: string, type: 'success' | 'error') => {
       console.log("[JS] page.tsx | showToast | L75: Data processing");
@@ -85,6 +90,8 @@ export default function WorkflowDetailPage() {
         try {
             const detail = await getWorkflow(workflowId);
             setWorkflowDetail(detail);
+            setName(detail.name);
+            setDescription(detail.description || '');
 
             const history = await getWorkflowVersions(workflowId);
             // Show all versions except this one (historic)
@@ -107,6 +114,9 @@ export default function WorkflowDetailPage() {
         try {
             const result = await runWorkflow(workflowId);
             showToast(`Run ${result.mode}: ${result.status}`, 'success');
+            // Select the new run immediately and refresh the list
+            if (result.run_id) setSelectedRunId(result.run_id);
+            await refetchRuns();
         } catch (err) {
             showToast(`Run failed: ${err instanceof Error ? err.message : 'Unknown'}`, 'error');
         }
@@ -136,6 +146,34 @@ export default function WorkflowDetailPage() {
             showToast(`Rollback failed: ${err instanceof Error ? err.message : 'Unknown'}`, 'error');
         }
         setRolling(null);
+    };
+
+    // ── Settings Handlers ────────────────────────────────────────────────────
+    const handleUpdate = async () => {
+        setSaving(true);
+        try {
+            await updateWorkflow(workflowId, { name, description });
+            renameWorkflowTab(workflowId, name);
+            showToast('Workflow updated successfully', 'success');
+            await fetchDetail();
+        } catch (err) {
+            showToast(`Update failed: ${err instanceof Error ? err.message : 'Unknown'}`, 'error');
+        }
+        setSaving(false);
+    };
+
+    const handleDelete = async () => {
+        if (!confirm('Are you sure you want to delete this workflow? It will be archived and hidden.')) return;
+        setDeleting(true);
+        try {
+            await deleteWorkflow(workflowId);
+            await fetchWorkflows(); // Refresh sidebar
+            showToast('Workflow deleted and archived', 'success');
+            router.push('/automate'); // Go back to main canvas
+        } catch (err) {
+            showToast(`Deletion failed: ${err instanceof Error ? err.message : 'Unknown'}`, 'error');
+            setDeleting(false);
+        }
     };
 
     // ── Runs Data ─────────────────────────────────────────────────────────────
@@ -344,7 +382,7 @@ export default function WorkflowDetailPage() {
                                                     
                                                     <div style={{ 
                                                         width: 16, height: 16, borderRadius: '50%', 
-                                                        background: state.status === 'completed' ? '#10b981' : state.status === 'failed' ? '#ef4444' : 'var(--border-default)',
+                                                        background: state.status === 'completed' ? '#10b981' : state.status === 'failed' ? '#ef4444' : (state.status === 'awaiting_review' || state.status === 'waiting') ? '#f59e0b' : 'var(--border-default)',
                                                         zIndex: 1, marginTop: 2, border: '3px solid var(--bg-card)'
                                                     }}></div>
                                                     
@@ -362,17 +400,34 @@ export default function WorkflowDetailPage() {
                                                                 {state.error}
                                                             </div>
                                                         )}
-                                                        {state.status === 'awaiting_review' && (
+                                                        {(state.status === 'awaiting_review' || state.status === 'waiting') && (
                                                             <div style={{ 
-                                                                marginTop: 12, padding: '14px', 
-                                                                background: 'rgba(245, 158, 11, 0.05)', 
-                                                                border: '1px solid rgba(245, 158, 11, 0.2)', 
-                                                                borderRadius: 8 
+                                                                marginTop: 12, padding: '16px', 
+                                                                background: 'rgba(245, 158, 11, 0.1)', 
+                                                                border: '2px solid #f59e0b', 
+                                                                borderRadius: 12,
+                                                                boxShadow: '0 4px 12px rgba(245, 158, 11, 0.15)',
+                                                                animation: 'pulse-subtle 2s infinite'
                                                             }}>
-                                                                <p style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b', marginBottom: 10 }}>Action Required: Human Review</p>
-                                                                <div style={{ display: 'flex', gap: 8 }}>
-                                                                    <button className="btn-primary" onClick={() => handleApprove(state.node_id)} style={{ flex: 1, background: '#10b981', fontSize: 11 }}>Approve & Resume</button>
-                                                                    <button className="btn-secondary" onClick={() => handleReject(state.node_id)} style={{ flex: 1, color: '#ef4444', borderColor: '#ef4444', fontSize: 11 }}>Reject</button>
+                                                                <p style={{ fontSize: 13, fontWeight: 700, color: '#d97706', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                                    <AlertCircle size={16} />
+                                                                    ACTION REQUIRED: Manual Approval
+                                                                </p>
+                                                                <div style={{ display: 'flex', gap: 10 }}>
+                                                                    <button 
+                                                                        className="btn-primary" 
+                                                                        onClick={() => handleApprove(state.node_id)} 
+                                                                        style={{ flex: 1, background: '#10b981', fontSize: 12, fontWeight: 600, height: 36 }}
+                                                                    >
+                                                                        Approve & Resume
+                                                                    </button>
+                                                                    <button 
+                                                                        className="btn-secondary" 
+                                                                        onClick={() => handleReject(state.node_id)} 
+                                                                        style={{ flex: 1, color: '#ef4444', borderColor: '#ef4444', fontSize: 12, fontWeight: 600, height: 36 }}
+                                                                    >
+                                                                        Reject
+                                                                    </button>
                                                                 </div>
                                                             </div>
                                                         )}
@@ -454,15 +509,39 @@ export default function WorkflowDetailPage() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                                 <div>
                                     <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Workflow Name</label>
-                                    <input className="input" defaultValue={workflow?.name || ''} style={{ maxWidth: 400 }} />
+                                    <input 
+                                        className="input" 
+                                        value={name} 
+                                        onChange={(e) => setName(e.target.value)}
+                                        style={{ maxWidth: 400 }} 
+                                    />
                                 </div>
                                 <div>
                                     <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Description</label>
-                                    <textarea className="input" defaultValue={workflow?.description || ''} rows={3} style={{ maxWidth: 400, resize: 'vertical' }} />
+                                    <textarea 
+                                        className="input" 
+                                        value={description} 
+                                        onChange={(e) => setDescription(e.target.value)}
+                                        rows={3} 
+                                        style={{ maxWidth: 400, resize: 'vertical' }} 
+                                    />
                                 </div>
                                 <div style={{ display: 'flex', gap: 8 }}>
-                                    <button className="btn-primary">Save Changes</button>
-                                    <button className="btn-secondary" style={{ color: '#ef4444' }}>Delete Workflow</button>
+                                    <button 
+                                        className="btn-primary" 
+                                        onClick={handleUpdate}
+                                        disabled={saving}
+                                    >
+                                        {saving ? 'Saving...' : 'Save Changes'}
+                                    </button>
+                                    <button 
+                                        className="btn-secondary" 
+                                        onClick={handleDelete}
+                                        disabled={deleting}
+                                        style={{ color: '#ef4444' }}
+                                    >
+                                        {deleting ? 'Deleting...' : 'Delete Workflow'}
+                                    </button>
                                 </div>
                             </div>
                         </div>

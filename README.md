@@ -57,8 +57,13 @@ pip install -r requirements.txt
 # Run migrations (Ensures DB schema is up-to-date)
 alembic upgrade head
 
-# Initialize the database (Seeds demo workflows)
-python app/seed.py
+# Initialize the database (Seeds demo workflows and default admin)
+python app/seed_postgres.py
+
+# Default Credentials (created by seed script):
+# Role: Admin
+# Email: admin@example.com
+# Password: admin123
 
 # Start the API server
 uvicorn app.main:app --reload

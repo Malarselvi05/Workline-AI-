@@ -1,0 +1,128 @@
+﻿Testing run_workflow_async(8)
+[WORKFLOW_DEBUG] ASYNC_START: WorkflowID=8, RunID=None
+[WORKFLOW_DEBUG] DB_CONNECTED: SessionLocal initialized successfully
+[WORKFLOW_DEBUG] NEW_RUN: Creating new run for workflow 8
+[PY] session.py | protect_audit_logs | L64: Keep it up
+[PY] session.py | _do_orm_execute | L33: System checking in
+[PY] context.py | get_org_id | L9: Data processing
+[WORKFLOW_DEBUG] RUN_ID_CONFIRMED: RunID=13
+[WORKFLOW_DEBUG] REDIS_CONNECTING: Attempting to connect to redis://localhost:6379/0
+[WORKFLOW_DEBUG] REDIS_ERROR: Connection failed (live updates disabled): 
+[WORKFLOW_DEBUG] FETCHING_GRAPH: Getting workflow structure for 8
+[PY] session.py | _do_orm_execute | L33: System checking in
+[PY] context.py | get_org_id | L9: Data processing
+[PY] session.py | _do_orm_execute | L33: System checking in
+[PY] context.py | get_org_id | L9: Data processing
+[PY] session.py | _do_orm_execute | L33: System checking in
+[PY] context.py | get_org_id | L9: Data processing
+[WORKFLOW_DEBUG] GRAPH_BUILD: Processing 8 nodes and 7 edges
+[PY] session.py | _do_orm_execute | L33: System checking in
+[PY] context.py | get_org_id | L9: Data processing
+[WORKFLOW_DEBUG] NODE_INIT: ID=node_1, Type=file_upload
+[WORKFLOW_DEBUG] NODE_INIT: ID=node_2, Type=ocr
+[WORKFLOW_DEBUG] NODE_INIT: ID=node_3, Type=clean
+[WORKFLOW_DEBUG] NODE_INIT: ID=node_4, Type=parse
+[WORKFLOW_DEBUG] NODE_INIT: ID=node_5, Type=classify
+[WORKFLOW_DEBUG] NODE_INIT: ID=node_6, Type=store
+[WORKFLOW_DEBUG] NODE_INIT: ID=node_7, Type=notify
+[WORKFLOW_DEBUG] NODE_INIT: ID=node_103, Type=human_review
+[WORKFLOW_DEBUG] EDGE_INIT: node_2 -> node_3
+[WORKFLOW_DEBUG] EDGE_INIT: node_3 -> node_4
+[WORKFLOW_DEBUG] EDGE_INIT: node_4 -> node_5
+[WORKFLOW_DEBUG] EDGE_INIT: node_5 -> node_6
+[WORKFLOW_DEBUG] EDGE_INIT: node_6 -> node_7
+[WORKFLOW_DEBUG] EDGE_INIT: node_1 -> node_103
+[WORKFLOW_DEBUG] EDGE_INIT: node_103 -> node_2
+[PY] session.py | protect_audit_logs | L64: Keep it up
+[WORKFLOW_DEBUG] EXECUTION_READY: Passing graph to engine
+[PATHFINDER] Engine Init: 8 nodes, 7 edges
+[PATHFINDER] Adjacency: node_2 -> node_3
+[PATHFINDER] Adjacency: node_3 -> node_4
+[PATHFINDER] Adjacency: node_4 -> node_5
+[PATHFINDER] Adjacency: node_5 -> node_6
+[PATHFINDER] Adjacency: node_6 -> node_7
+[PATHFINDER] Adjacency: node_1 -> node_103
+[PATHFINDER] Adjacency: node_103 -> node_2
+[PATHFINDER] In-Degrees: {
+  "node_1": 0,
+  "node_2": 1,
+  "node_3": 1,
+  "node_4": 1,
+  "node_5": 1,
+  "node_6": 1,
+  "node_7": 1,
+  "node_103": 1
+}
+[WORKFLOW_DEBUG] ENGINE_START: Beginning topological execution
+
+[PATHFINDER] EXECUTION WAVE START
+[PATHFINDER] WAVE 1: Executing nodes ['node_1']
+[PATHFINDER] Run: Node=node_1, Type=file_upload
+[WORKFLOW_DEBUG] ENGINE_EVENT: Node=node_1 changed to running
+[PY] session.py | _do_orm_execute | L33: System checking in
+[PY] context.py | get_org_id | L9: Data processing
+[PY] session.py | protect_audit_logs | L64: Keep it up
+[WORKFLOW_DEBUG] ENGINE_EVENT: Node=node_1 changed to failed
+[PY] session.py | _do_orm_execute | L33: System checking in
+[PY] context.py | get_org_id | L9: Data processing
+[PY] session.py | protect_audit_logs | L64: Keep it up
+[PATHFINDER] WAVE 2: Executing nodes ['node_103']
+[PATHFINDER] Propagation: Skipping node_103 due to upstream failure
+[WORKFLOW_DEBUG] ENGINE_EVENT: Node=node_103 changed to skipped
+[PY] session.py | _do_orm_execute | L33: System checking in
+[PY] context.py | get_org_id | L9: Data processing
+[PY] session.py | protect_audit_logs | L64: Keep it up
+[PATHFINDER] WAVE 3: Executing nodes ['node_2']
+[PATHFINDER] Propagation: Skipping node_2 due to upstream failure
+[WORKFLOW_DEBUG] ENGINE_EVENT: Node=node_2 changed to skipped
+[PY] session.py | _do_orm_execute | L33: System checking in
+[PY] context.py | get_org_id | L9: Data processing
+[PY] session.py | protect_audit_logs | L64: Keep it up
+[PATHFINDER] WAVE 4: Executing nodes ['node_3']
+[PATHFINDER] Propagation: Skipping node_3 due to upstream failure
+[WORKFLOW_DEBUG] ENGINE_EVENT: Node=node_3 changed to skipped
+[PY] session.py | _do_orm_execute | L33: System checking in
+[PY] context.py | get_org_id | L9: Data processing
+[PY] session.py | protect_audit_logs | L64: Keep it up
+[PATHFINDER] WAVE 5: Executing nodes ['node_4']
+[PATHFINDER] Propagation: Skipping node_4 due to upstream failure
+[WORKFLOW_DEBUG] ENGINE_EVENT: Node=node_4 changed to skipped
+[PY] session.py | _do_orm_execute | L33: System checking in
+[PY] context.py | get_org_id | L9: Data processing
+[PY] session.py | protect_audit_logs | L64: Keep it up
+[PATHFINDER] WAVE 6: Executing nodes ['node_5']
+[PATHFINDER] Propagation: Skipping node_5 due to upstream failure
+[WORKFLOW_DEBUG] ENGINE_EVENT: Node=node_5 changed to skipped
+[PY] session.py | _do_orm_execute | L33: System checking in
+[PY] context.py | get_org_id | L9: Data processing
+[PY] session.py | protect_audit_logs | L64: Keep it up
+[PATHFINDER] WAVE 7: Executing nodes ['node_6']
+[PATHFINDER] Propagation: Skipping node_6 due to upstream failure
+[WORKFLOW_DEBUG] ENGINE_EVENT: Node=node_6 changed to skipped
+[PY] session.py | _do_orm_execute | L33: System checking in
+[PY] context.py | get_org_id | L9: Data processing
+[PY] session.py | protect_audit_logs | L64: Keep it up
+[PATHFINDER] WAVE 8: Executing nodes ['node_7']
+[PATHFINDER] Propagation: Skipping node_7 due to upstream failure
+[WORKFLOW_DEBUG] ENGINE_EVENT: Node=node_7 changed to skipped
+[PY] session.py | _do_orm_execute | L33: System checking in
+[PY] context.py | get_org_id | L9: Data processing
+[PY] session.py | protect_audit_logs | L64: Keep it up
+[PATHFINDER] EXECUTION WAVE COMPLETE
+
+[WORKFLOW_DEBUG] ENGINE_COMPLETE: FinalStatus=failed
+[PY] session.py | protect_audit_logs | L64: Keep it up
+[PY] session.py | _do_orm_execute | L33: System checking in
+[PY] context.py | get_org_id | L9: Data processing
+[PY] session.py | _do_orm_execute | L33: System checking in
+[PY] context.py | get_org_id | L9: Data processing
+[WORKFLOW_DEBUG] DB_FINALIZED: Run 13 record closed as failed
+[WORKFLOW_DEBUG] DRIFT_CHECK: Starting
+[PY] ws.py | __init__ | L16: Data processing
+[PY] ws.py | __init__ | L16: Code alive
+[PY] session.py | _do_orm_execute | L33: System checking in
+[PY] context.py | get_org_id | L9: Data processing
+[WORKFLOW_DEBUG] DRIFT_CHECK: Finished
+[WORKFLOW_DEBUG] CLEANUP: Closing connections
+RESULT:
+{'status': 'failed', 'run_id': 13, 'results': {'initial_input': None}}

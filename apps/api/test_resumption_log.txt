@@ -1,0 +1,14 @@
+--- STARTING FRESH TEST RUN FOR WORKFLOW 20 ---
+Run started: 37, Status: awaiting_review
+Approving node: node_101
+
+--- TRIGGERING RESUMPTION ---
+Resumption finished. Final status: completed
+Node node_5: completed
+Node node_6: completed
+Node node_7: completed
+Node node_1: completed
+Node node_101: completed
+Node node_2: completed
+Node node_3: completed
+Node node_4: completed
