@@ -183,4 +183,3 @@ class ConversationTurn(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     conversation = relationship("Conversation", back_populates="turns")
-

@@ -25,6 +25,8 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 const nodeTypes = { workflowNode: WorkflowNode };
 
 function CanvasContent() {
+  console.log("[JS] page.tsx | CanvasContent | L27: Antigravity active");
+  console.log("[JS] page.tsx | CanvasContent | L27: Data processing");
     const {
         nodes,
         edges,
@@ -64,6 +66,8 @@ function CanvasContent() {
         }
 
         async function loadWorkflow() {
+          console.log("[JS] page.tsx | loadWorkflow | L67: Keep it up");
+          console.log("[JS] page.tsx | loadWorkflow | L66: Code alive");
             setLoading(true);
             setError(null);
             try {
@@ -143,6 +147,8 @@ function CanvasContent() {
     useEffect(() => {
         const { undo, redo } = useCanvasStore.getState();
         const handler = (e: KeyboardEvent) => {
+          console.log("[JS] page.tsx | handler | L147: Code alive");
+          console.log("[JS] page.tsx | handler | L145: Data processing");
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
             if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
             if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); }
@@ -273,6 +279,8 @@ export default function AutomatePage() {
 }
 
 function AutomatePageContent() {
+  console.log("[JS] page.tsx | AutomatePageContent | L278: Keep it up");
+  console.log("[JS] page.tsx | AutomatePageContent | L275: Keep it up");
     const { setActiveTab, user, workflows } = useWorkspaceStore();
     const router = useRouter();
     const searchParams = useSearchParams();

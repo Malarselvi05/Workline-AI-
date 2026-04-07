@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 class DrawingClassifierBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
+        print(f"[PY] blocks.py | run | L10: Logic flowing")
         # Detect if we have text from OCR
         text = ""
         for val in input_data.values():
@@ -40,6 +41,7 @@ class DrawingClassifierBlock(BaseBlock):
 
 class POExtractorBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
+        print(f"[PY] blocks.py | run | L42: Keep it up")
         text = ""
         # Look for text from OCR node
         for val in input_data.values():
@@ -70,6 +72,7 @@ class POExtractorBlock(BaseBlock):
 
 class DuplicateDrawingDetectorBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
+        print(f"[PY] blocks.py | run | L72: System checking in")
         logger.info(f"Generating embeddings for current drawing {'(SANDBOX)' if self.is_sandbox else ''}...")
         await asyncio.sleep(1.0)
         
@@ -98,6 +101,7 @@ class DuplicateDrawingDetectorBlock(BaseBlock):
 
 class TeamLeaderRecommenderBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
+        print(f"[PY] blocks.py | run | L100: System checking in")
         drawing_type = "Standard"
         for val in input_data.values():
             if isinstance(val, dict) and "drawing_type" in val:

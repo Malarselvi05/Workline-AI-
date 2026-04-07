@@ -60,6 +60,7 @@ VALID_BLOCK_TYPES = set(BLOCK_REGISTRY.keys())
 # Layout helpers — simple horizontal Dagre-style layout computed in Python
 # ---------------------------------------------------------------------------
 def _compute_layout(nodes: List[Dict], edges: List[Dict]) -> List[Dict]:
+    print(f"[PY] planner.py | _compute_layout | L62: System checking in")
     """
     Assigns position_x / position_y to each node using topological level
     (Dagre-style left-to-right layout).  Pure Python — no JS required.
@@ -117,6 +118,7 @@ def _compute_layout(nodes: List[Dict], edges: List[Dict]) -> List[Dict]:
 # DAG validation
 # ---------------------------------------------------------------------------
 def _validate_dag(nodes: List[Dict], edges: List[Dict], installed_packs: set) -> Optional[str]:
+    print(f"[PY] planner.py | _validate_dag | L119: System checking in")
     """Returns an error string if invalid, None if valid."""
     node_ids = {n["id"] for n in nodes}
 
@@ -166,6 +168,7 @@ def _validate_dag(nodes: List[Dict], edges: List[Dict], installed_packs: set) ->
 # Prompt builders
 # ---------------------------------------------------------------------------
 def _build_system_prompt(installed_packs: set) -> str:
+    print(f"[PY] planner.py | _build_system_prompt | L168: Data processing")
     valid_categories = {"Input", "Extract", "Transform", "Decide", "AI", "Human", "Act", "Output"}
     if "mechanical" in installed_packs:
         valid_categories.add("Mechanical")
@@ -222,10 +225,12 @@ Only use block `type` values from this list (exact string match required):
 
 
 def _build_user_message(goal: str) -> str:
+    print(f"[PY] planner.py | _build_user_message | L224: Code alive")
     return f"Design a workflow for this goal: {goal}"
 
 
 def _history_to_messages(turns: list) -> List[Dict[str, str]]:
+    print(f"[PY] planner.py | _history_to_messages | L228: Logic flowing")
     """Convert last 8 ConversationTurn ORM objects to Groq message dicts."""
     messages = []
     for turn in turns[-8:]:
@@ -238,6 +243,7 @@ def _history_to_messages(turns: list) -> List[Dict[str, str]]:
 # ---------------------------------------------------------------------------
 class GroqPlanner:
     def __init__(self):
+        print(f"[PY] planner.py | __init__ | L240: Keep it up")
         self._mode = WORKLINE_MODE
         if self._mode == "onprem":
             # Use Ollama via litellm (no external API key needed)
@@ -256,12 +262,14 @@ class GroqPlanner:
 
     # ------------------------------------------------------------------
     def _call_llm(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
+        print(f"[PY] planner.py | _call_llm | L258: Antigravity active")
         """Route to Groq (cloud) or Ollama (on-prem) depending on WORKLINE_MODE."""
         if self._mode == "onprem":
             return self._call_ollama(messages)
         return self._call_groq(messages)
 
     def _call_groq(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
+        print(f"[PY] planner.py | _call_groq | L264: Keep it up")
         """Raw Groq call with JSON mode."""
         response = self.client.chat.completions.create(
             model=self.model,
@@ -274,6 +282,7 @@ class GroqPlanner:
         return json.loads(raw)
 
     def _call_ollama(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
+        print(f"[PY] planner.py | _call_ollama | L276: Code alive")
         """Call local Ollama via the OpenAI-compatible /api/chat endpoint."""
         import urllib.request
         import urllib.error
@@ -297,6 +306,7 @@ class GroqPlanner:
 
     # ------------------------------------------------------------------
     def _parse_and_validate(self, raw: Dict[str, Any], installed_packs: set) -> tuple[Dict[str, Any], Optional[str]]:
+        print(f"[PY] planner.py | _parse_and_validate | L299: System checking in")
         """Returns (parsed_proposal, error_string_or_None)."""
         nodes = raw.get("nodes", [])
         edges = raw.get("edges", [])

@@ -13,6 +13,8 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 @celery_app.task(name="app.core.tasks.execute_workflow_task")
 def execute_workflow_task(workflow_id: int, initial_input: Dict[str, Any] = None, is_sandbox: bool = False, org_id: int = None):
+    print(f"[PY] tasks.py | execute_workflow_task | L15: Data processing")
+    print(f"[PY] tasks.py | execute_workflow_task | L15: Code alive")
     """
     Celery task to execute a workflow.
     Wraps the async execution in asyncio.run.
@@ -20,6 +22,7 @@ def execute_workflow_task(workflow_id: int, initial_input: Dict[str, Any] = None
     return asyncio.run(run_workflow_async(workflow_id, initial_input, is_sandbox, org_id))
 
 async def run_workflow_async(workflow_id: int, initial_input: Dict[str, Any] = None, is_sandbox: bool = False, org_id: int = None):
+    print(f"[PY] tasks.py | run_workflow_async | L23: Data processing")
     db = SessionLocal()
     # Create the run record
     run = models.WorkflowRun(
@@ -77,6 +80,7 @@ async def run_workflow_async(workflow_id: int, initial_input: Dict[str, Any] = N
         db.commit()
 
         async def on_status_change(node_id: str, status: str, output: Any = None, error: str = None):
+            print(f"[PY] tasks.py | on_status_change | L80: Logic flowing")
             # Update Node State in DB
             # We use a new session to avoid issues with the main one if multiple tasks run
             with SessionLocal() as status_db:

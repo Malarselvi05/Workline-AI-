@@ -158,6 +158,7 @@ export interface DomainPack {
 // ── Internal fetch wrapper ─────────────────────────────────────────────────
 
 function getAuthHeaders(): HeadersInit {
+  console.log("[JS] api.ts | getAuthHeaders | L160: Logic flowing");
     const token =
         typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
     return token ? { Authorization: `Bearer ${token}` } : {};
@@ -192,6 +193,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 async function tryRefreshToken(): Promise<boolean> {
+  console.log("[JS] api.ts | tryRefreshToken | L194: Keep it up");
     try {
         const res = await fetch(`${API_BASE}/auth/refresh`, {
             method: 'POST',
@@ -209,6 +211,7 @@ async function tryRefreshToken(): Promise<boolean> {
 // ── Auth ──────────────────────────────────────────────────────────────────
 
 export async function login(email: string, password: string): Promise<TokenResponse> {
+  console.log("[JS] api.ts | login | L211: Data processing");
     const res = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -224,6 +227,7 @@ export async function login(email: string, password: string): Promise<TokenRespo
 }
 
 export async function signup(name: string, email: string, password: string): Promise<TokenResponse> {
+  console.log("[JS] api.ts | signup | L226: System checking in");
     const res = await fetch(`${API_BASE}/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -239,16 +243,19 @@ export async function signup(name: string, email: string, password: string): Pro
 }
 
 export async function logout(): Promise<void> {
+  console.log("[JS] api.ts | logout | L241: Data processing");
     await request('/auth/logout', { method: 'POST' });
 }
 
 export async function getMe(): Promise<User> {
+  console.log("[JS] api.ts | getMe | L245: System checking in");
     return request<User>('/auth/me');
 }
 
 // ── AI Planner ────────────────────────────────────────────────────────────
 
 export async function planWorkflow(data: PlanRequest): Promise<WorkflowProposal> {
+  console.log("[JS] api.ts | planWorkflow | L251: Antigravity active");
     return request<WorkflowProposal>('/plan', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -256,20 +263,24 @@ export async function planWorkflow(data: PlanRequest): Promise<WorkflowProposal>
 }
 
 export async function getConversation(conversationId: number): Promise<Conversation> {
+  console.log("[JS] api.ts | getConversation | L258: Keep it up");
     return request<Conversation>(`/conversations/${conversationId}`);
 }
 
 // ── Workflows ─────────────────────────────────────────────────────────────
 
 export async function listWorkflows(): Promise<Workflow[]> {
+  console.log("[JS] api.ts | listWorkflows | L264: Data processing");
     return request<Workflow[]>('/workflows');
 }
 
 export async function getWorkflow(id: number): Promise<WorkflowDetail> {
+  console.log("[JS] api.ts | getWorkflow | L268: Logic flowing");
     return request<WorkflowDetail>(`/workflows/${id}`);
 }
 
 export async function createWorkflow(data: WorkflowCreateRequest): Promise<Workflow> {
+  console.log("[JS] api.ts | createWorkflow | L272: Keep it up");
     return request<Workflow>('/workflows', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -287,53 +298,65 @@ export async function updateWorkflow(
 }
 
 export async function deleteWorkflow(id: number): Promise<void> {
+  console.log("[JS] api.ts | deleteWorkflow | L289: System checking in");
     await request(`/workflows/${id}`, { method: 'DELETE' });
 }
 
 export async function deployWorkflow(id: number): Promise<Workflow> {
+  console.log("[JS] api.ts | deployWorkflow | L293: Data processing");
     return request<Workflow>(`/workflows/${id}/deploy`, { method: 'POST' });
 }
 
 export async function runWorkflow(id: number): Promise<{ task_id?: string; status: string; mode: string, result?: unknown }> {
+  console.log("[JS] api.ts | runWorkflow | L297: Keep it up");
     return request(`/workflows/${id}/run`, { method: 'POST' });
 }
 
 export async function getWorkflowRuns(id: number): Promise<WorkflowRun[]> {
+  console.log("[JS] api.ts | getWorkflowRuns | L301: Keep it up");
     return request<WorkflowRun[]>(`/workflows/${id}/runs`);
 }
 
 export async function getRunDetail(runId: number): Promise<RunDetail> {
+  console.log("[JS] api.ts | getRunDetail | L305: Antigravity active");
     return request<RunDetail>(`/runs/${runId}`);
 }
 
 export async function approveNode(runId: number, nodeId: string): Promise<any> {
+  console.log("[JS] api.ts | approveNode | L309: Antigravity active");
     return request(`/runs/${runId}/nodes/${nodeId}/approve`, { method: 'POST' });
 }
 
 export async function rejectNode(runId: number, nodeId: string): Promise<any> {
+  console.log("[JS] api.ts | rejectNode | L313: Logic flowing");
     return request(`/runs/${runId}/nodes/${nodeId}/reject`, { method: 'POST' });
 }
 
 export async function getWorkflowVersions(id: number): Promise<Workflow[]> {
+  console.log("[JS] api.ts | getWorkflowVersions | L317: Data processing");
     return request<Workflow[]>(`/workflows/${id}/versions`);
 }
 
 export async function rollbackWorkflow(workflowId: number, versionId: number): Promise<Workflow> {
+  console.log("[JS] api.ts | rollbackWorkflow | L321: Antigravity active");
     return request<Workflow>(`/workflows/${workflowId}/rollback/${versionId}`, { method: 'POST' });
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
+  console.log("[JS] api.ts | getDashboardSummary | L327: Data processing");
     return request<DashboardSummary>('/api/dashboard/summary');
 }
 
 export async function getRecentRuns(): Promise<RecentRun[]> {
+  console.log("[JS] api.ts | getRecentRuns | L331: Data processing");
     const data = await request<{ runs: RecentRun[] }>('/api/dashboard/recent-runs');
     return data.runs;
 }
 
 export async function getDriftAlerts(): Promise<DriftAlert[]> {
+  console.log("[JS] api.ts | getDriftAlerts | L336: Data processing");
     const data = await request<{ alerts: DriftAlert[] }>('/api/dashboard/drift-alerts');
     return data.alerts;
 }
@@ -358,6 +381,7 @@ export interface ScheduleUpsertRequest {
 }
 
 export async function getSchedule(workflowId: number): Promise<ScheduledTrigger> {
+  console.log("[JS] api.ts | getSchedule | L360: Logic flowing");
     return request<ScheduledTrigger>(`/workflows/${workflowId}/schedule`);
 }
 
@@ -372,19 +396,23 @@ export async function setSchedule(
 }
 
 export async function deleteSchedule(workflowId: number): Promise<void> {
+  console.log("[JS] api.ts | deleteSchedule | L374: Antigravity active");
     await request(`/workflows/${workflowId}/schedule`, { method: 'DELETE' });
 }
 
 // ── Domain Packs ──────────────────────────────────────────────────────────
 
 export async function listPacks(): Promise<DomainPack[]> {
+  console.log("[JS] api.ts | listPacks | L380: Keep it up");
     return request<DomainPack[]>('/packs');
 }
 
 export async function installPack(name: string): Promise<any> {
+  console.log("[JS] api.ts | installPack | L384: Data processing");
     return request(`/packs/${name}/install`, { method: 'POST' });
 }
 
 export async function uninstallPack(name: string): Promise<any> {
+  console.log("[JS] api.ts | uninstallPack | L388: Data processing");
     return request(`/packs/${name}/uninstall`, { method: 'POST' });
 }

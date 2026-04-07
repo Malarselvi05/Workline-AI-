@@ -37,6 +37,7 @@ const TABS = [
 // MOCK_DETAIL_RUNS removed
 
 const statusBadge = (status: string) => {
+  console.log("[JS] page.tsx | statusBadge | L39: System checking in");
     switch (status) {
         case 'completed': return 'badge-success';
         case 'failed': return 'badge-danger';
@@ -73,6 +74,7 @@ export default function WorkflowDetailPage() {
 
 
     const showToast = (message: string, type: 'success' | 'error') => {
+      console.log("[JS] page.tsx | showToast | L75: Data processing");
         setToast({ message, type });
         setTimeout(() => setToast(null), 3500);
     };
@@ -100,6 +102,7 @@ export default function WorkflowDetailPage() {
 
     // ── Run ───────────────────────────────────────────────────────────────────
     const handleRun = async () => {
+      console.log("[JS] page.tsx | handleRun | L102: Antigravity active");
         setRunning(true);
         try {
             const result = await runWorkflow(workflowId);
@@ -112,6 +115,7 @@ export default function WorkflowDetailPage() {
 
     // ── Deploy (from detail page) ─────────────────────────────────────────────
     const handleDeployed = async () => {
+      console.log("[JS] page.tsx | handleDeployed | L114: Keep it up");
         // DeployModal already called deployWorkflow(); now refresh detail
         updateWorkflowStatus(workflowId, 'active');
         await fetchDetail();
@@ -120,6 +124,7 @@ export default function WorkflowDetailPage() {
 
     // ── Rollback ──────────────────────────────────────────────────────────────
     const handleRollback = async (versionId: number) => {
+      console.log("[JS] page.tsx | handleRollback | L122: System checking in");
         if (!confirm(`Roll back to version #${versionId}? A new draft will be created.`)) return;
         setRolling(versionId);
         try {
@@ -148,6 +153,7 @@ export default function WorkflowDetailPage() {
 
     // ── Approval Handlers ────────────────────────────────────────────────────
     const handleApprove = async (nodeId: string) => {
+      console.log("[JS] page.tsx | handleApprove | L150: Data processing");
         if (!selectedRunId) return;
         try {
             await approveNode(selectedRunId, nodeId);
@@ -160,6 +166,7 @@ export default function WorkflowDetailPage() {
     };
 
     const handleReject = async (nodeId: string) => {
+      console.log("[JS] page.tsx | handleReject | L162: Keep it up");
         if (!selectedRunId) return;
         try {
             await rejectNode(selectedRunId, nodeId);

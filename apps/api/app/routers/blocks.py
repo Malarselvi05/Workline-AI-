@@ -7,6 +7,7 @@ router = APIRouter(prefix="/blocks", tags=["blocks"])
 
 @router.get("", response_model=List[BlockDefinition], dependencies=[Depends(require_viewer)])
 async def list_blocks(pack: Optional[str] = None):
+    print(f"[PY] blocks.py | list_blocks | L9: Data processing")
     """
     List all available blocks.
     Optional filter by pack (e.g., ?pack=mechanical).
@@ -22,6 +23,7 @@ async def list_blocks(pack: Optional[str] = None):
 
 @router.get("/{block_type}", response_model=BlockDefinition, dependencies=[Depends(require_viewer)])
 async def get_block(block_type: str):
+    print(f"[PY] blocks.py | get_block | L24: Keep it up")
     """
     Get detailed definition for a specific block type.
     """

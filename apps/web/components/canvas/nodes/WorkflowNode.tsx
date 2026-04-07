@@ -20,6 +20,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
 
 // ── Status badge ────────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status?: string }) {
+  console.log("[JS] WorkflowNode.tsx | StatusBadge | L22: Keep it up");
     if (!status) return null;
     const map: Record<string, { bg: string; label: string; spin?: boolean }> = {
         pending: { bg: '#64748b', label: '●' },
@@ -58,6 +59,7 @@ function StatusBadge({ status }: { status?: string }) {
 
 // ── Reasoning tooltip ───────────────────────────────────────────────────────
 function ReasoningTooltip({ reasoning }: { reasoning: string }) {
+  console.log("[JS] WorkflowNode.tsx | ReasoningTooltip | L60: Logic flowing");
     const [show, setShow] = useState(false);
     if (!reasoning) return null;
     return (
@@ -106,11 +108,13 @@ interface CtxMenuProps {
 }
 
 function ContextMenu({ nodeId, x, y, reasoning, onClose }: CtxMenuProps) {
+  console.log("[JS] WorkflowNode.tsx | ContextMenu | L108: Code alive");
     const { duplicateNode, deleteNode } = useCanvasStore();
     const menuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const handler = (e: MouseEvent | KeyboardEvent) => {
+          console.log("[JS] WorkflowNode.tsx | handler | L113: Keep it up");
             if (e instanceof KeyboardEvent && e.key === 'Escape') { onClose(); return; }
             if (e instanceof MouseEvent && menuRef.current && !menuRef.current.contains(e.target as Node)) {
                 onClose();
@@ -192,6 +196,7 @@ function ContextMenu({ nodeId, x, y, reasoning, onClose }: CtxMenuProps) {
 
 // ── Main node component ─────────────────────────────────────────────────────
 function WorkflowNode({ id, data, selected }: NodeProps) {
+  console.log("[JS] WorkflowNode.tsx | WorkflowNode | L194: Keep it up");
     const runStatus = useCanvasStore((s) => s.runStatus[id]);
     const diffState = useCanvasStore((s) => s.diffState);
     const { openContextMenu, contextMenu, closeContextMenu } = useCanvasStore();

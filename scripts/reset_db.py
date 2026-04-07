@@ -15,6 +15,7 @@ from app.db.session import engine, Base
 from app.models import models
 
 def reset_database():
+    print(f"[PY] reset_db.py | reset_database | L17: System checking in")
     print("Dropping all tables...")
     Base.metadata.drop_all(bind=engine)
     print("Creating all tables with new schema...")

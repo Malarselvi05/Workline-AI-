@@ -15,6 +15,7 @@ export default function SignupPage() {
     const [error, setError] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
+      console.log("[JS] page.tsx | handleSubmit | L17: System checking in");
         e.preventDefault();
         setLoading(true);
         setError('');

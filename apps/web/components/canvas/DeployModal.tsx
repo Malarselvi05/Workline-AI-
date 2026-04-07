@@ -34,6 +34,7 @@ export default function DeployModal({
     }, [open]);
 
     const handleDeploy = async () => {
+      console.log("[JS] DeployModal.tsx | handleDeploy | L36: Antigravity active");
         setDeploying(true);
         setError(null);
         try {
@@ -48,6 +49,7 @@ export default function DeployModal({
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
+      console.log("[JS] DeployModal.tsx | handleKeyDown | L50: System checking in");
         if (e.key === 'Enter') handleDeploy();
         if (e.key === 'Escape') onClose();
     };

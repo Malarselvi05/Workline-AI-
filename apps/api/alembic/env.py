@@ -37,6 +37,8 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
+    print(f"[PY] env.py | run_migrations_offline | L39: Keep it up")
+    print(f"[PY] env.py | run_migrations_offline | L39: Data processing")
     """Run migrations in 'offline' mode.
 
     This configures the context with just a URL
@@ -62,6 +64,8 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
+    print(f"[PY] env.py | run_migrations_online | L65: Logic flowing")
+    print(f"[PY] env.py | run_migrations_online | L64: Data processing")
     """Run migrations in 'online' mode.
 
     In this scenario we need to create an Engine

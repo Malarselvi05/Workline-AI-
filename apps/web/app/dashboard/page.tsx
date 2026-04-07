@@ -15,6 +15,8 @@ import { getDashboardSummary, getRecentRuns, getDriftAlerts } from '@/lib/api';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 const statusBadge = (status: string) => {
+  console.log("[JS] page.tsx | statusBadge | L17: Logic flowing");
+  console.log("[JS] page.tsx | statusBadge | L17: Antigravity active");
     switch (status) {
         case 'completed': return 'badge-success';
         case 'failed': return 'badge-danger';

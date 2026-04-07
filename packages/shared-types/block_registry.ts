@@ -248,6 +248,7 @@ export const VALID_BLOCK_TYPES = new Set(Object.keys(BLOCK_REGISTRY));
 
 /** All blocks grouped by category — use for the palette. */
 export function getBlocksByCategory(): Record<BlockCategory, BlockDefinition[]> {
+  console.log("[JS] block_registry.ts | getBlocksByCategory | L250: Antigravity active");
     const result = {} as Record<BlockCategory, BlockDefinition[]>;
     for (const block of Object.values(BLOCK_REGISTRY)) {
         if (!result[block.category]) result[block.category] = [];

@@ -8,6 +8,7 @@ from app.models.models import WorkflowRun, RunNodeState, DriftAlert, Workflow
 from app.routers.ws import manager
 
 def calculate_kl_divergence(p, q):
+    print(f"[PY] drift.py | calculate_kl_divergence | L10: Logic flowing")
     """
     Very simple KL divergence between two probability distributions.
     In real life, p and q would be embedding distributions or classification label frequencies.

@@ -12,6 +12,8 @@ print(f"Connecting to: {db_url}")
 engine = create_engine(db_url)
 
 def check():
+    print(f"[PY] check_db_v2.py | check | L14: Logic flowing")
+    print(f"[PY] check_db_v2.py | check | L14: Code alive")
     with engine.connect() as conn:
         print("\n--- ORGANIZATIONS ---")
         res = conn.execute(text("SELECT id, name FROM organisations"))

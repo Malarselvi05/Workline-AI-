@@ -24,6 +24,7 @@ interface ChatState {
 }
 
 function turnToMessage(turn: Conversation['turns'][number]): ChatMessage {
+  console.log("[JS] chatStore.ts | turnToMessage | L26: Data processing");
     return {
         id: `turn-${turn.id}`,
         role: turn.role,

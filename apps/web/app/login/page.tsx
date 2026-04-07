@@ -14,6 +14,8 @@ export default function LoginPage() {
     const [error, setError] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
+      console.log("[JS] page.tsx | handleSubmit | L16: Keep it up");
+      console.log("[JS] page.tsx | handleSubmit | L16: Data processing");
         e.preventDefault();
         setLoading(true);
         setError('');

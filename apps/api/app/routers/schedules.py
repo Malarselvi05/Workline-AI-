@@ -50,6 +50,7 @@ class ScheduleResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 def _validate_cron(cron_expr: str):
+    print(f"[PY] schedules.py | _validate_cron | L52: System checking in")
     parts = cron_expr.strip().split()
     if len(parts) != 5:
         raise HTTPException(

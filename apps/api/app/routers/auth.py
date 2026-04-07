@@ -10,6 +10,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/signup", response_model=Token)
 async def signup(response: Response, signup_data: SignupRequest, db: Session = Depends(get_db)):
+    print(f"[PY] auth.py | signup | L12: Logic flowing")
     # Check if user already exists
     existing_user = db.query(models.User).filter(models.User.email == signup_data.email).first()
     if existing_user:
@@ -54,6 +55,7 @@ async def signup(response: Response, signup_data: SignupRequest, db: Session = D
 
 @router.post("/login", response_model=Token)
 async def login(response: Response, login_data: LoginRequest, db: Session = Depends(get_db)):
+    print(f"[PY] auth.py | login | L56: Keep it up")
     user = db.query(models.User).filter(models.User.email == login_data.email).first()
     if not user or not verify_password(login_data.password, user.password_hash):
         raise HTTPException(
@@ -83,6 +85,7 @@ async def login(response: Response, login_data: LoginRequest, db: Session = Depe
 
 @router.post("/refresh", response_model=Token)
 async def refresh_token(request: Request, response: Response, db: Session = Depends(get_db)):
+    print(f"[PY] auth.py | refresh_token | L85: Code alive")
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
         # Fallback to body if cookie not present (for non-browser clients)
@@ -118,6 +121,7 @@ async def refresh_token(request: Request, response: Response, db: Session = Depe
 
 @router.post("/logout")
 async def logout(response: Response):
+    print(f"[PY] auth.py | logout | L120: Antigravity active")
     response.delete_cookie("refresh_token")
     return {"detail": "Successfully logged out"}
 
@@ -125,4 +129,5 @@ from app.auth.dependencies import get_current_active_user
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: models.User = Depends(get_current_active_user)):
+    print(f"[PY] auth.py | get_me | L127: Data processing")
     return current_user

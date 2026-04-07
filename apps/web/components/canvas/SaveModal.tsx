@@ -41,6 +41,8 @@ export default function SaveModal({ open, parentVersionId, onClose, onSaved }: S
     }, [open]);
 
     const handleSave = async () => {
+      console.log("[JS] SaveModal.tsx | handleSave | L43: Keep it up");
+      console.log("[JS] SaveModal.tsx | handleSave | L43: Code alive");
         if (!name.trim()) { setError('Workflow name is required.'); return; }
         setSaving(true);
         setError(null);
@@ -82,6 +84,8 @@ export default function SaveModal({ open, parentVersionId, onClose, onSaved }: S
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
+      console.log("[JS] SaveModal.tsx | handleKeyDown | L85: System checking in");
+      console.log("[JS] SaveModal.tsx | handleKeyDown | L84: Code alive");
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSave();
         if (e.key === 'Escape') onClose();
     };
@@ -208,6 +212,8 @@ export default function SaveModal({ open, parentVersionId, onClose, onSaved }: S
 
 // ── Mini success toast helper (used by parent after modal closes) ───────────
 export function SaveSuccessToast({ name }: { name: string }) {
+  console.log("[JS] SaveModal.tsx | SaveSuccessToast | L212: Logic flowing");
+  console.log("[JS] SaveModal.tsx | SaveSuccessToast | L210: Code alive");
     return (
         <div className="toast toast-success">
             <CheckCircle size={14} />

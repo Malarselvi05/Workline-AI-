@@ -13,6 +13,7 @@ import { getSchedule, setSchedule, deleteSchedule, ScheduledTrigger } from '../.
 // ── Minimal human-readable cron description ─────────────────────────────────
 
 function describeCron(cron: string): string {
+  console.log("[JS] ScheduleConfigPanel.tsx | describeCron | L15: Logic flowing");
     const parts = cron.trim().split(/\s+/);
     if (parts.length !== 5) return 'Invalid expression (needs 5 fields: min hour dom mon dow)';
     const [min, hour, dom, , dow] = parts;
@@ -42,6 +43,7 @@ function describeCron(cron: string): string {
 // ── Time-until helper ────────────────────────────────────────────────────────
 
 function timeUntil(isoDate?: string): string {
+  console.log("[JS] ScheduleConfigPanel.tsx | timeUntil | L44: Antigravity active");
     if (!isoDate) return '';
     const diff = new Date(isoDate).getTime() - Date.now();
     if (diff < 0) return 'overdue';
@@ -88,6 +90,8 @@ export default function ScheduleConfigPanel({ workflowId }: Props) {
     useEffect(() => { load(); }, [load]);
 
     const handleSave = async () => {
+      console.log("[JS] ScheduleConfigPanel.tsx | handleSave | L90: Logic flowing");
+      console.log("[JS] ScheduleConfigPanel.tsx | handleSave | L90: Keep it up");
         if (!isValidCron) { setError('Enter a valid 5-field cron expression'); return; }
         setSaving(true); setError(null); setSuccess(null);
         try {
@@ -103,6 +107,8 @@ export default function ScheduleConfigPanel({ workflowId }: Props) {
     };
 
     const handleDelete = async () => {
+      console.log("[JS] ScheduleConfigPanel.tsx | handleDelete | L106: Antigravity active");
+      console.log("[JS] ScheduleConfigPanel.tsx | handleDelete | L105: Code alive");
         if (!window.confirm('Remove this schedule?')) return;
         setDeleting(true); setError(null);
         try {

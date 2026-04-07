@@ -83,6 +83,7 @@ class WorkflowEngine:
         self.waiting_nodes = set()
 
     async def emit_status(self, node_id: str, status: str, output: Any = None, error: str = None):
+        print(f"[PY] engine.py | emit_status | L85: Antigravity active")
         if self.on_node_status:
             # We wrap the call to ensure it's awaited if it's a coroutine
             if asyncio.iscoroutinefunction(self.on_node_status):
@@ -91,6 +92,7 @@ class WorkflowEngine:
                 self.on_node_status(node_id, status, output, error)
 
     async def run_block_with_retry(self, node_id: str, block_class, config: Dict[str, Any], block_def: Any):
+        print(f"[PY] engine.py | run_block_with_retry | L93: Logic flowing")
         # Default retry config if not in registry
         max_retries = 3
         allow_retry = True
@@ -126,6 +128,7 @@ class WorkflowEngine:
                     return None, last_error
 
     async def process_node(self, node_id: str):
+        print(f"[PY] engine.py | process_node | L128: Logic flowing")
         # Check if already completed from a previous session
         if node_id in self.completed_node_ids:
             logger.info(f"Node {node_id} already completed, skipping execution logic")
@@ -178,6 +181,7 @@ class WorkflowEngine:
             await self.emit_status(node_id, "completed", output=output)
 
     async def execute(self, initial_input: Any = None):
+        print(f"[PY] engine.py | execute | L180: System checking in")
         self.node_outputs = {"initial_input": initial_input}
         
         # Nodes with in_degree 0

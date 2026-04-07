@@ -19,6 +19,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    print(f"[PY] ee6be72db079_make_audit_logs_append_only.py | upgrade | L21: Antigravity active")
     """Upgrade schema."""
     conn = op.get_bind()
     if conn.dialect.name == "sqlite":
@@ -52,6 +53,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    print(f"[PY] ee6be72db079_make_audit_logs_append_only.py | downgrade | L54: System checking in")
     """Downgrade schema."""
     conn = op.get_bind()
     if conn.dialect.name == "sqlite":

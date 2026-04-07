@@ -60,6 +60,7 @@ export default function BlockPalette() {
     }, [domainPackVisible, grouped]);
 
     const toggleCat = (cat: string) => {
+      console.log("[JS] BlockPalette.tsx | toggleCat | L62: Antigravity active");
         setExpandedCats((prev) => {
             const next = new Set(prev);
             if (next.has(cat)) next.delete(cat);
@@ -69,6 +70,7 @@ export default function BlockPalette() {
     };
 
     const onDragStart = (e: React.DragEvent, blockDef: BlockDef) => {
+      console.log("[JS] BlockPalette.tsx | onDragStart | L71: Logic flowing");
         e.dataTransfer.setData('application/workline-block', JSON.stringify(blockDef));
         e.dataTransfer.effectAllowed = 'move';
     };

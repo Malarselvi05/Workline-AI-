@@ -32,6 +32,7 @@ async def test_engine_benchmark_3_nodes():
     assert duration < 2.0, f"Engine execution took {duration}s -> longer than 2s limit!"
 
 def test_plan_benchmark(monkeypatch):
+    print(f"[PY] test_benchmark.py | test_plan_benchmark | L34: System checking in")
     """
     Benchmarks the overhead of POST /plan router parsing, validation, DAG layout.
     LLM call is mocked to verify the API speed overhead < 5s limit logic.
@@ -39,6 +40,7 @@ def test_plan_benchmark(monkeypatch):
     from app.ai.planner import GroqPlanner
     
     def fake_call_llm(self, messages):
+        print(f"[PY] test_benchmark.py | fake_call_llm | L41: System checking in")
         return {
             "title": "Benchmark Output",
             "reasoning": "Quick test",
@@ -55,6 +57,7 @@ def test_plan_benchmark(monkeypatch):
     from app.models.models import User
     
     def override_require_viewer():
+        print(f"[PY] test_benchmark.py | override_require_viewer | L57: Keep it up")
         return User(id=1, org_id=1, email="bench@test.com", role="admin")
         
     app.dependency_overrides[require_viewer] = override_require_viewer

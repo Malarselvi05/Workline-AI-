@@ -8,15 +8,19 @@ logger = logging.getLogger(__name__)
 
 class BaseBlock(ABC):
     def __init__(self, config: Dict[str, Any], is_sandbox: bool = False):
+        print(f"[PY] blocks.py | __init__ | L10: System checking in")
+        print(f"[PY] blocks.py | __init__ | L10: Antigravity active")
         self.config = config
         self.is_sandbox = is_sandbox
 
     @abstractmethod
     async def run(self, input_data: Any) -> Any:
+        print(f"[PY] blocks.py | run | L16: Antigravity active")
         pass
 
 class OCRBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
+        print(f"[PY] blocks.py | run | L20: System checking in")
         # Mock OCR logic with delay to simulate processing
         logger.info(f"Running OCR {'(SANDBOX)' if self.is_sandbox else ''}...")
         await asyncio.sleep(1.5)
@@ -30,6 +34,7 @@ class OCRBlock(BaseBlock):
 
 class ClassifyBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
+        print(f"[PY] blocks.py | run | L33: Logic flowing")
         text = "No text found"
         for val in input_data.values():
             if isinstance(val, dict) and "text" in val:
@@ -54,6 +59,7 @@ class ClassifyBlock(BaseBlock):
 
 class StoreFileBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
+        print(f"[PY] blocks.py | run | L57: Antigravity active")
         category = "general"
         for val in input_data.values():
             if isinstance(val, dict) and "category" in val:
@@ -73,17 +79,20 @@ class StoreFileBlock(BaseBlock):
 # --- New Input Blocks ---
 class APITriggerBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
+        print(f"[PY] blocks.py | run | L76: Code alive")
         logger.info("Triggered via API")
         return input_data.get("initial_input", {})
 
 class FormInputBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
+        print(f"[PY] blocks.py | run | L81: Data processing")
         logger.info("Collecting Form Input")
         return self.config.get("default_data", {})
 
 # --- New Extract Blocks ---
 class ParseBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
+        print(f"[PY] blocks.py | run | L87: System checking in")
         text = ""
         for val in input_data.values():
             if isinstance(val, dict) and "text" in val:
@@ -104,6 +113,7 @@ class ParseBlock(BaseBlock):
 # --- New Transform Blocks ---
 class TextCleanerBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
+        print(f"[PY] blocks.py | run | L107: Data processing")
         text = ""
         for val in input_data.values():
             if isinstance(val, dict) and "text" in val:
@@ -116,6 +126,7 @@ class TextCleanerBlock(BaseBlock):
 
 class FieldMapperBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
+        print(f"[PY] blocks.py | run | L119: Code alive")
         mapping = self.config.get("mapping", {})
         result = {}
         # Flatten input data to a single dict for mapping
@@ -132,6 +143,7 @@ class FieldMapperBlock(BaseBlock):
 # --- New Decide Blocks ---
 class RouterBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
+        print(f"[PY] blocks.py | run | L135: Code alive")
         condition = self.config.get("condition", "True")
         # In a real app, we'd use a safe eval or a rule engine
         # For now, we return a decision that the engine will use to filter edges
@@ -147,6 +159,7 @@ class RouterBlock(BaseBlock):
 
 class ScorerBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
+        print(f"[PY] blocks.py | run | L150: Logic flowing")
         await asyncio.sleep(0.5)
         score = random.uniform(0, 100)
         return {"score": score, "threshold": self.config.get("threshold", 50)}
@@ -154,6 +167,7 @@ class ScorerBlock(BaseBlock):
 # --- New Human Blocks ---
 class HumanReviewBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
+        print(f"[PY] blocks.py | run | L157: Logic flowing")
         logger.info("Human Review Block triggered. Execution should pause.")
         # This is a special status that the engine must handle
         return {"status": "waiting_for_human", "message": self.config.get("instruction", "Please review this document")}
@@ -161,11 +175,13 @@ class HumanReviewBlock(BaseBlock):
 # --- New Act Blocks ---
 class TaskCreateBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
+        print(f"[PY] blocks.py | run | L164: Antigravity active")
         logger.info(f"Creating task in {self.config.get('platform', 'Jira')}")
         return {"task_id": f"TASK-{random.randint(1000, 9999)}", "status": "created"}
 
 class NotifyBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
+        print(f"[PY] blocks.py | run | L169: System checking in")
         channel = self.config.get("channel", "email")
         logger.info(f"Sending notification via {channel}")
         return {"sent": True, "channel": channel}

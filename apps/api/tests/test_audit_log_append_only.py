@@ -4,6 +4,7 @@ from app.models.models import AuditLog, Organisation
 from sqlalchemy.exc import DatabaseError, OperationalError, InternalError
 
 def test_audit_logs_append_only():
+    print(f"[PY] test_audit_log_append_only.py | test_audit_logs_append_only | L6: Logic flowing")
     db = SessionLocal()
     try:
         # Find or create a dummy org

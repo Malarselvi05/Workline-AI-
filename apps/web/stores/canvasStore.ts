@@ -137,6 +137,7 @@ interface CanvasState {
 let nodeIdCounter = 100;
 
 function makeEmptyDiff(): DiffState {
+  console.log("[JS] canvasStore.ts | makeEmptyDiff | L139: Antigravity active");
     return { changed: new Set(), added: new Set(), removed: new Set() };
 }
 

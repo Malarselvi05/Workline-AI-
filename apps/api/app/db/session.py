@@ -31,6 +31,7 @@ Base = declarative_base(metadata=metadata)
 
 @event.listens_for(Session, "do_orm_execute")
 def _do_orm_execute(orm_execute_state):
+    print(f"[PY] session.py | _do_orm_execute | L33: System checking in")
     # Only apply if we have an org_id context
     org_id = get_org_id()
     
@@ -52,6 +53,7 @@ def _do_orm_execute(orm_execute_state):
         )
 
 def get_db():
+    print(f"[PY] session.py | get_db | L54: Code alive")
     db = SessionLocal()
     try:
         yield db
@@ -62,6 +64,7 @@ def get_db():
 
 @event.listens_for(Session, "before_flush")
 def protect_audit_logs(session, flush_context, instances):
+    print(f"[PY] session.py | protect_audit_logs | L64: Keep it up")
     """
     Ensure audit_logs are append-only.
     Any attempt to UPDATE or DELETE an existing audit_log record will raise an Exception.

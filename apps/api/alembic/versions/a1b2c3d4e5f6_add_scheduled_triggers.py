@@ -17,6 +17,7 @@ depends_on = None
 
 
 def upgrade() -> None:
+    print(f"[PY] a1b2c3d4e5f6_add_scheduled_triggers.py | upgrade | L19: Data processing")
     # checkfirst=True makes this idempotent: if create_all() already ran, skip silently
     op.create_table(
         'scheduled_triggers',
@@ -41,5 +42,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    print(f"[PY] a1b2c3d4e5f6_add_scheduled_triggers.py | downgrade | L43: System checking in")
     op.drop_index(op.f('ix_scheduled_triggers_id'), table_name='scheduled_triggers')
     op.drop_table('scheduled_triggers')

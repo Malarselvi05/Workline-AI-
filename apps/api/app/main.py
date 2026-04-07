@@ -35,6 +35,7 @@ from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    print(f"[PY] main.py | lifespan | L37: Data processing")
     """Restore all cron schedules from DB into Celery beat on API start."""
     try:
         from app.db.session import SessionLocal
@@ -68,6 +69,7 @@ app.add_middleware(
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
+    print(f"[PY] main.py | log_requests | L70: System checking in")
     logger.info(f"Request: {request.method} {request.url}")
     try:
         response = await call_next(request)
@@ -100,6 +102,7 @@ app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"]
 
 @app.get("/")
 async def root():
+    print(f"[PY] main.py | root | L102: System checking in")
     return {"message": "WorkLine AI API is running", "version": "0.2.0", "host": "localhost", "port": 8001}
 
 if __name__ == "__main__":

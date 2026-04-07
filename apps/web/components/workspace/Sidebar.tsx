@@ -44,6 +44,7 @@ export default function Sidebar() {
 
     // Helper to get the best URL for the "Automate" nav item
     const getAutomateUrl = () => {
+      console.log("[JS] Sidebar.tsx | getAutomateUrl | L46: Code alive");
         // Try to load the most relevant workflow (active first, then anything)
         const firstWf = workflows.find(w => w.status === 'active') || workflows[0];
         return firstWf ? `/automate?load=${firstWf.id}` : '/automate';
@@ -62,6 +63,7 @@ export default function Sidebar() {
     }, []);
 
     const toggleDark = () => {
+      console.log("[JS] Sidebar.tsx | toggleDark | L64: Logic flowing");
         if (isDark) {
             document.documentElement.classList.remove('dark');
             localStorage.theme = 'light';
@@ -76,6 +78,7 @@ export default function Sidebar() {
     const { clearMessages } = useChatStore();
 
     const handleLogout = async () => {
+      console.log("[JS] Sidebar.tsx | handleLogout | L78: System checking in");
         try {
             await apiLogout();
         } catch (err) {
@@ -96,6 +99,7 @@ export default function Sidebar() {
 
     useEffect(() => {
         const handleResize = () => {
+          console.log("[JS] Sidebar.tsx | handleResize | L98: Code alive");
             if (window.innerWidth < 1024) {
                 if (!useWorkspaceStore.getState().sidebarCollapsed) {
                     useWorkspaceStore.getState().toggleSidebar();
@@ -111,6 +115,7 @@ export default function Sidebar() {
     }, []);
 
     const statusColor = (status: string) => {
+      console.log("[JS] Sidebar.tsx | statusColor | L113: Data processing");
         if (status === 'active') return '#10b981';
         if (status === 'archived') return '#6b7280';
         return '#f59e0b'; // draft

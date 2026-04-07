@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def _get_celery_app():
+    print(f"[PY] scheduler.py | _get_celery_app | L21: Logic flowing")
     """Late import to avoid circular load order issues."""
     from app.core.celery_app import celery_app
     return celery_app
@@ -29,6 +30,7 @@ def _get_celery_app():
 # ---------------------------------------------------------------------------
 
 def _compute_next_run(cron_expr: str) -> Optional[datetime]:
+    print(f"[PY] scheduler.py | _compute_next_run | L31: Keep it up")
     """Return the next UTC datetime the cron will fire, or None if croniter is unavailable."""
     try:
         from croniter import croniter  # type: ignore
@@ -48,6 +50,7 @@ def _compute_next_run(cron_expr: str) -> Optional[datetime]:
 # ---------------------------------------------------------------------------
 
 def _register_celery_beat_entry(workflow_id: int, cron_expr: str):
+    print(f"[PY] scheduler.py | _register_celery_beat_entry | L50: Data processing")
     """Inject a dynamic beat entry into celery_app.conf.beat_schedule."""
     celery_app = _get_celery_app()
     try:
@@ -77,6 +80,7 @@ def _register_celery_beat_entry(workflow_id: int, cron_expr: str):
 
 
 def _deregister_celery_beat_entry(workflow_id: int):
+    print(f"[PY] scheduler.py | _deregister_celery_beat_entry | L79: Code alive")
     """Remove a dynamic beat entry from celery_app.conf.beat_schedule."""
     celery_app = _get_celery_app()
     entry_name = f"scheduled_workflow_{workflow_id}"
@@ -90,6 +94,7 @@ def _deregister_celery_beat_entry(workflow_id: int):
 # ---------------------------------------------------------------------------
 
 def register_schedule(db, workflow_id: int, cron_expr: str, org_id: Optional[int] = None) -> "models.ScheduledTrigger":  # noqa: F821
+    print(f"[PY] scheduler.py | register_schedule | L92: Code alive")
     """
     Upsert a ScheduledTrigger row and register the Celery beat entry.
     Returns the saved ScheduledTrigger.
@@ -120,6 +125,7 @@ def register_schedule(db, workflow_id: int, cron_expr: str, org_id: Optional[int
 
 
 def deregister_schedule(db, workflow_id: int):
+    print(f"[PY] scheduler.py | deregister_schedule | L122: Antigravity active")
     """Disable and deregister the schedule for a workflow."""
     from app.models import models
 
@@ -133,6 +139,7 @@ def deregister_schedule(db, workflow_id: int):
 
 
 def restore_all_schedules(db):
+    print(f"[PY] scheduler.py | restore_all_schedules | L135: Logic flowing")
     """
     Called on API startup.  Re-registers Celery beat entries for all enabled schedules.
     """
@@ -153,6 +160,7 @@ def restore_all_schedules(db):
 # ---------------------------------------------------------------------------
 
 def trigger_scheduled_workflow(workflow_id: int):
+    print(f"[PY] scheduler.py | trigger_scheduled_workflow | L155: Logic flowing")
     """
     Celery task that fires when a cron schedule fires.
     Delegates to execute_workflow_task and updates last_run_at.

@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    print(f"[PY] dependencies.py | get_current_user | L14: Logic flowing")
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -36,9 +37,11 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     return user
 
 async def get_current_active_user(current_user: models.User = Depends(get_current_user)):
+    print(f"[PY] dependencies.py | get_current_active_user | L38: Keep it up")
     return current_user
 
 async def require_admin(current_user: models.User = Depends(get_current_active_user)):
+    print(f"[PY] dependencies.py | require_admin | L41: Data processing")
     if current_user.role not in ["admin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -47,6 +50,7 @@ async def require_admin(current_user: models.User = Depends(get_current_active_u
     return current_user
 
 async def require_editor(current_user: models.User = Depends(get_current_active_user)):
+    print(f"[PY] dependencies.py | require_editor | L49: Data processing")
     if current_user.role not in ["admin", "editor"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -55,6 +59,7 @@ async def require_editor(current_user: models.User = Depends(get_current_active_
     return current_user
 
 async def require_viewer(current_user: models.User = Depends(get_current_active_user)):
+    print(f"[PY] dependencies.py | require_viewer | L57: System checking in")
     if current_user.role not in ["admin", "editor", "viewer"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

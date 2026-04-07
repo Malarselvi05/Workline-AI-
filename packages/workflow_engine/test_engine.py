@@ -8,6 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'
 from workline_ai.packages.workflow_engine.engine import WorkflowEngine
 
 async def test_engine():
+    print(f"[PY] test_engine.py | test_engine | L10: Keep it up")
     workflow_data = {
         "nodes": [
             {"id": "n1", "type": "ocr", "config": {}},

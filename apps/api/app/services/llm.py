@@ -10,6 +10,8 @@ WORKLINE_MODE = os.getenv("WORKLINE_MODE", "cloud").lower()  # "cloud" | "onprem
 
 class LLMService:
     def __init__(self):
+        print(f"[PY] llm.py | __init__ | L12: Code alive")
+        print(f"[PY] llm.py | __init__ | L12: Keep it up")
         self._mode = WORKLINE_MODE
         if self._mode == "onprem":
             # On-prem: talk directly to Ollama
@@ -29,11 +31,13 @@ class LLMService:
             self.model = "llama-3.3-70b-versatile"
 
     async def chat_completion(self, messages: List[Dict[str, str]], json_mode: bool = True) -> Any:
+        print(f"[PY] llm.py | chat_completion | L32: System checking in")
         if self._mode == "onprem":
             return await self._call_ollama(messages, json_mode)
         return await self._call_groq(messages, json_mode)
 
     async def _call_groq(self, messages: List[Dict[str, str]], json_mode: bool) -> Any:
+        print(f"[PY] llm.py | _call_groq | L37: Keep it up")
         if not self.client:
             return {"error": "Groq client not initialized"}
         try:
@@ -53,6 +57,7 @@ class LLMService:
             return {"error": str(e)}
 
     async def _call_ollama(self, messages: List[Dict[str, str]], json_mode: bool) -> Any:
+        print(f"[PY] llm.py | _call_ollama | L56: System checking in")
         """Call Ollama's OpenAI-compatible chat endpoint (zero external network)."""
         import asyncio
         import urllib.request
@@ -66,6 +71,8 @@ class LLMService:
         }).encode()
         try:
             def _sync_call():
+                print(f"[PY] llm.py | _sync_call | L69: Data processing")
+                print(f"[PY] llm.py | _sync_call | L68: Keep it up")
                 req = urllib.request.Request(
                     f"{self._ollama_base}/api/chat",
                     data=payload,
@@ -85,6 +92,7 @@ class LLMService:
             return {"error": str(e)}
 
     async def classify_text(self, text: str, categories: List[str]) -> Dict[str, Any]:
+        print(f"[PY] llm.py | classify_text | L89: Antigravity active")
         prompt = f"""
         Classify the following text into one of these categories: {', '.join(categories)}.
         Text: {text}
@@ -95,6 +103,7 @@ class LLMService:
         return await self.chat_completion(messages)
 
     async def extract_structured_data(self, text: str, schema: Dict[str, str]) -> Dict[str, Any]:
+        print(f"[PY] llm.py | extract_structured_data | L99: Logic flowing")
         schema_str = json.dumps(schema, indent=2)
         prompt = f"""
         Extract structured data from the text below according to this schema:
@@ -110,6 +119,7 @@ class LLMService:
     # ── Embedding generation ──────────────────────────────────────────────────
 
     async def get_embeddings(self, text: str) -> List[float]:
+        print(f"[PY] llm.py | get_embeddings | L114: Code alive")
         """
         Generate text embeddings.
         cloud:  placeholder (Groq doesn't provide embeddings — use LiteLLM or OpenAI directly)
@@ -123,12 +133,15 @@ class LLMService:
         return [random.random() for _ in range(1024)]
 
     async def _get_bge_embeddings(self, text: str) -> List[float]:
+        print(f"[PY] llm.py | _get_bge_embeddings | L127: Antigravity active")
         import asyncio
         import urllib.request
         embedding_url = os.getenv("EMBEDDING_URL", "http://localhost:8080")
         payload = json.dumps({"inputs": text}).encode()
 
         def _sync_call():
+            print(f"[PY] llm.py | _sync_call | L133: System checking in")
+            print(f"[PY] llm.py | _sync_call | L131: Data processing")
             req = urllib.request.Request(
                 f"{embedding_url}/embed",
                 data=payload,

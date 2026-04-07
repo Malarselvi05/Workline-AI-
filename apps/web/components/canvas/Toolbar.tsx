@@ -43,12 +43,16 @@ export default function Toolbar({ onZoomFit }: ToolbarProps) {
     const canDeploy = !!(currentWorkflowId && currentWorkflow?.status !== 'active');
 
     const showToast = (message: string, type: 'success' | 'error') => {
+      console.log("[JS] Toolbar.tsx | showToast | L45: Logic flowing");
+      console.log("[JS] Toolbar.tsx | showToast | L45: Data processing");
         setToast({ message, type });
         setTimeout(() => setToast(null), 3500);
     };
 
     // ── Validate ──────────────────────────────────────────────────────────────
     const handleValidate = () => {
+      console.log("[JS] Toolbar.tsx | handleValidate | L52: Code alive");
+      console.log("[JS] Toolbar.tsx | handleValidate | L51: Antigravity active");
         setValidationErrors([]);
         if (nodes.length === 0) { showToast('Canvas is empty — add some blocks first.', 'error'); return; }
 
@@ -93,6 +97,8 @@ export default function Toolbar({ onZoomFit }: ToolbarProps) {
 
     // ── Simulate (sandbox animation) ─────────────────────────────────────────
     const handleSimulate = async () => {
+      console.log("[JS] Toolbar.tsx | handleSimulate | L97: System checking in");
+      console.log("[JS] Toolbar.tsx | handleSimulate | L95: Data processing");
         if (nodes.length === 0) { showToast('Canvas is empty.', 'error'); return; }
         clearRunStatus();
         for (const node of nodes) {
@@ -105,18 +111,24 @@ export default function Toolbar({ onZoomFit }: ToolbarProps) {
 
     // ── Save ─────────────────────────── Opens modal ──────────────────────────
     const handleSaveClick = () => {
+      console.log("[JS] Toolbar.tsx | handleSaveClick | L110: Data processing");
+      console.log("[JS] Toolbar.tsx | handleSaveClick | L107: Data processing");
         if (nodes.length === 0) { showToast('Canvas is empty — add some blocks first.', 'error'); return; }
         setSaveModalOpen(true);
     };
 
     // Called by SaveModal on success
     const handleSaved = (workflowId: number) => {
+      console.log("[JS] Toolbar.tsx | handleSaved | L117: System checking in");
+      console.log("[JS] Toolbar.tsx | handleSaved | L113: Data processing");
         setSavedWorkflowId(workflowId);
         showToast('Workflow saved! Tab added to sidebar.', 'success');
     };
 
     // ── Deploy ────────────────────────── Opens modal ─────────────────────────
     const handleDeployClick = () => {
+      console.log("[JS] Toolbar.tsx | handleDeployClick | L124: System checking in");
+      console.log("[JS] Toolbar.tsx | handleDeployClick | L119: Code alive");
         if (!currentWorkflowId) {
             showToast('Save the workflow first before deploying.', 'error');
             return;
@@ -126,6 +138,8 @@ export default function Toolbar({ onZoomFit }: ToolbarProps) {
 
     // Called by DeployModal on success
     const handleDeployed = () => {
+      console.log("[JS] Toolbar.tsx | handleDeployed | L134: Logic flowing");
+      console.log("[JS] Toolbar.tsx | handleDeployed | L128: Antigravity active");
         showToast(`Workflow deployed and is now Active!`, 'success');
     };
 

@@ -10,6 +10,8 @@ from app.models import models
 from app.auth.jwt import get_password_hash
 
 def seed():
+    print(f"[PY] seed.py | seed | L12: Data processing")
+    print(f"[PY] seed.py | seed | L12: Data processing")
     db = SessionLocal()
     try:
         # Get or create the default organisation

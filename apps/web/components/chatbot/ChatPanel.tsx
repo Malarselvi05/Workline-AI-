@@ -188,6 +188,8 @@ function ProposalCard({
 
 // ── Restore dialog ────────────────────────────────────────────────────────────
 function RestoreDialog({ onRestore, onClose }: { onRestore: (id: number) => void; onClose: () => void }) {
+  console.log("[JS] ChatPanel.tsx | RestoreDialog | L190: System checking in");
+  console.log("[JS] ChatPanel.tsx | RestoreDialog | L190: Keep it up");
     const [value, setValue] = useState('');
     return (
         <div
@@ -250,6 +252,8 @@ export default function ChatPanel() {
     if (!isOpen) return null;
 
     const handleSend = async () => {
+      console.log("[JS] ChatPanel.tsx | handleSend | L253: System checking in");
+      console.log("[JS] ChatPanel.tsx | handleSend | L252: Keep it up");
         const goal = input.trim();
         if (!goal || isLoading) return;
         setInput('');
@@ -257,6 +261,8 @@ export default function ChatPanel() {
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
+      console.log("[JS] ChatPanel.tsx | handleKeyDown | L261: Keep it up");
+      console.log("[JS] ChatPanel.tsx | handleKeyDown | L259: Data processing");
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
             e.preventDefault();
             handleSend();
@@ -264,6 +270,8 @@ export default function ChatPanel() {
     };
 
     const handleApply = (proposal: NonNullable<(typeof messages)[number]['proposal']>) => {
+      console.log("[JS] ChatPanel.tsx | handleApply | L269: Logic flowing");
+      console.log("[JS] ChatPanel.tsx | handleApply | L266: Antigravity active");
         importFromProposal(proposal);
     };
 

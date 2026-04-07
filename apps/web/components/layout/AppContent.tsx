@@ -6,6 +6,7 @@ import Sidebar from "@/components/workspace/Sidebar";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 export default function AppContent({ children }: { children: React.ReactNode }) {
+  console.log("[JS] AppContent.tsx | AppContent | L8: System checking in");
     const pathname = usePathname();
     const { fetchUser } = useWorkspaceStore();
     const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname === "/";

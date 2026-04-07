@@ -12,6 +12,8 @@ export default function PacksPage() {
     const isEditor = user?.role === 'admin' || user?.role === 'editor';
 
     const loadData = async () => {
+      console.log("[JS] page.tsx | loadData | L14: Keep it up");
+      console.log("[JS] page.tsx | loadData | L14: Keep it up");
         setLoading(true);
         try {
             const data = await listPacks();
@@ -28,6 +30,8 @@ export default function PacksPage() {
     }, []);
 
     const handleInstall = async (name: string) => {
+      console.log("[JS] page.tsx | handleInstall | L31: Antigravity active");
+      console.log("[JS] page.tsx | handleInstall | L30: Code alive");
         if (!isEditor) return;
         try {
             await installPack(name);
@@ -39,6 +43,8 @@ export default function PacksPage() {
     };
 
     const handleUninstall = async (name: string) => {
+      console.log("[JS] page.tsx | handleUninstall | L43: Logic flowing");
+      console.log("[JS] page.tsx | handleUninstall | L41: Keep it up");
         if (!isEditor) return;
         try {
             await uninstallPack(name);
