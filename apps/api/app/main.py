@@ -31,14 +31,10 @@ logger = logging.getLogger(__name__)
 
 from app.routers import auth, workflows, planning, blocks, runs, ws, dashboard, schedules, packs
 
-app = FastAPI(
-    title="WorkLine AI API",
-    description="No-code, graph-based AI workflow automation platform.",
-    version="0.3.0",
-)
+from contextlib import asynccontextmanager
 
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     """Restore all cron schedules from DB into Celery beat on API start."""
     try:
         from app.db.session import SessionLocal
@@ -47,8 +43,15 @@ async def startup_event():
         restore_all_schedules(db)
         db.close()
     except Exception as exc:
-        import logging
-        logging.getLogger(__name__).warning("Could not restore schedules on startup: %s", exc)
+        logger.warning("Could not restore schedules on startup: %s", exc)
+    yield
+
+app = FastAPI(
+    title="WorkLine AI API",
+    description="No-code, graph-based AI workflow automation platform.",
+    version="0.3.0",
+    lifespan=lifespan,
+)
 
 app.add_middleware(
     CORSMiddleware,

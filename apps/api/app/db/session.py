@@ -57,3 +57,18 @@ def get_db():
         yield db
     finally:
         db.close()
+
+# ── Audit Log Protection ───────────────────────────────────────────────────
+
+@event.listens_for(Session, "before_flush")
+def protect_audit_logs(session, flush_context, instances):
+    """
+    Ensure audit_logs are append-only.
+    Any attempt to UPDATE or DELETE an existing audit_log record will raise an Exception.
+    """
+    for obj in session.dirty:
+        if getattr(obj, "__tablename__", None) == "audit_logs":
+            raise Exception("Updates to audit logs are not allowed")
+    for obj in session.deleted:
+        if getattr(obj, "__tablename__", None) == "audit_logs":
+            raise Exception("Deletions of audit logs are not allowed")
