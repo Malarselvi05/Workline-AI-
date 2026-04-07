@@ -138,6 +138,34 @@ Workline-AI/
 - [x] **Chatbot Panel UI** — Reasoning accordion, file attach, conversation restore (J3)
 - [x] **Workflow Save/Deploy UI** — SaveModal, DeployModal, Rollback UI, Sidebar status badges (J4)
 - [x] **Scheduled Triggers** — Cron schedule via `PUT /workflows/{id}/schedule`, dynamic Celery beat, ScheduleConfigPanel UI (J8)
-- [x] **On-Premises Mode** — `WORKLINE_MODE=onprem` runs fully air-gapped with Ollama + BGE via `docker-compose.onprem.yml` (J9)
+- [x] On-Premises Mode — `WORKLINE_MODE=onprem` runs fully air-gapped with Ollama + BGE via `docker-compose.onprem.yml` (J9)
 - [/] Multi-Domain Block Library (In Progress)
-- [ ] Multi-user RBAC (Planned)
+- [x] Multi-user RBAC & Organisations 
+
+---
+
+## 🔑 Login Credentials
+
+The following identities represent different roles and views across multiple isolated organizations.
+
+### Organization 1
+*Has independent workflows and team data isolated from Org 2.*
+
+*   **Email:** `malarrajamani24@gmail.com`
+*   **Password:** `1234`
+*   **Role:** Admin (Full Access to create & run pipelines)
+
+*   **Email:** `memberj@example.com`
+*   **Password:** `admin123`
+*   **Role:** Admin (Full Access)
+
+### Organization 2
+*Has independent testing workflows isolated from Org 1.*
+
+*   **Email:** `admin@workline.ai`
+*   **Password:** `admin123`
+*   **Role:** Admin (Full edit/configuration access)
+
+*   **Email:** `viewer@workline.ai`
+*   **Password:** `viewer123`
+*   **Role:** Viewer (Read-only observation access, cannot modify nodes)
