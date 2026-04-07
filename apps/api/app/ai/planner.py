@@ -258,21 +258,23 @@ class GroqPlanner:
             if not api_key:
                 raise RuntimeError("GROQ_API_KEY environment variable is not set.")
             self.client = Groq(api_key=api_key)
-            self.model = "llama-3.3-70b-versatile"
+            self.model = "llama-3.1-8b-instant"  # Using faster model for initial drafting
 
     # ------------------------------------------------------------------
-    def _call_llm(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
+    def _call_llm(self, messages: List[Dict[str, str]], model_override: Optional[str] = None) -> Dict[str, Any]:
         print(f"[PY] planner.py | _call_llm | L258: Antigravity active")
         """Route to Groq (cloud) or Ollama (on-prem) depending on WORKLINE_MODE."""
         if self._mode == "onprem":
-            return self._call_ollama(messages)
-        return self._call_groq(messages)
+            return self._call_ollama(messages, model_override)
+        return self._call_groq(messages, model_override)
 
-    def _call_groq(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
+    def _call_groq(self, messages: List[Dict[str, str]], model_override: Optional[str] = None) -> Dict[str, Any]:
         print(f"[PY] planner.py | _call_groq | L264: Keep it up")
         """Raw Groq call with JSON mode."""
+        model_to_use = model_override if model_override else self.model
+        print(f"[LLM] Calling Groq Cloud Model: {model_to_use}")
         response = self.client.chat.completions.create(
-            model=self.model,
+            model=model_to_use,
             messages=messages,
             temperature=0.2,
             response_format={"type": "json_object"},
@@ -281,13 +283,18 @@ class GroqPlanner:
         raw = response.choices[0].message.content
         return json.loads(raw)
 
-    def _call_ollama(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
+    def _call_ollama(self, messages: List[Dict[str, str]], model_override: Optional[str] = None) -> Dict[str, Any]:
         print(f"[PY] planner.py | _call_ollama | L276: Code alive")
         """Call local Ollama via the OpenAI-compatible /api/chat endpoint."""
         import urllib.request
         import urllib.error
+        
+        # Local model override fallback (assume same model if other isn't specified for local)
+        model_to_use = model_override if model_override and "llama-3" not in model_override else self.model
+        print(f"[LLM] Calling Ollama Local Model: {model_to_use}")
+        
         payload = json.dumps({
-            "model": "llama3.2:3b",
+            "model": model_to_use,
             "messages": messages,
             "stream": False,
             "format": "json",
@@ -325,6 +332,27 @@ class GroqPlanner:
             "edges": edges,
         }, None
 
+    def _evaluate_plan(self, original_goal: str, plan_raw: Dict[str, Any]) -> Dict[str, Any]:
+        print(f"[PY] planner.py | _evaluate_plan | Evaluator LLM running...")
+        prompt = f"""You are the Workflow Evaluator AI.
+The user requested this goal: "{original_goal}"
+The Planner AI produced this JSON workflow plan:
+{json.dumps(plan_raw, indent=2)}
+
+Task:
+Evaluate the plan against the goal. A workflow plan should be a logical sequence (DAG).
+Return a JSON object containing:
+{{
+  "confidence_score": <0-100 integer>,
+  "reasoning": "<why you gave this score>",
+  "edited_plan": <if score <= 75, provide the fully corrected JSON workflow plan matching the original format, else null>
+}}
+"""
+        messages = [{"role": "system", "content": prompt}]
+        
+        # Force the massive 70b model for critical evaluation logic
+        return self._call_llm(messages, model_override="llama-3.3-70b-versatile")
+
     # ------------------------------------------------------------------
     async def plan(
         self,
@@ -338,6 +366,7 @@ class GroqPlanner:
         - Creates (or loads) a Conversation record
         - Builds the message list with history (last 8 turns)
         - Calls Groq with retry on validation failure
+        - Runs Evaluator LLM on the result
         - Saves turns to DB
         - Returns WorkflowProposal dict
         """
@@ -416,6 +445,30 @@ class GroqPlanner:
 
             if err:
                 raise RuntimeError(f"LLM produced invalid workflow after retry: {err}")
+
+        # --- Evaluator Phase ---
+        if not err:
+            logger.info("Initializing Evaluator LLM phase...")
+            try:
+                eval_raw = self._evaluate_plan(goal, raw)
+                confidence = eval_raw.get("confidence_score", 100)
+                eval_reasoning = eval_raw.get("reasoning", "")
+                logger.info(f"Evaluator LLM confidence score: {confidence}. Reasoning: {eval_reasoning}")
+                
+                if confidence <= 75 and eval_raw.get("edited_plan"):
+                    logger.info("Confidence <= 75. Applying Evaluator LLM's edited plan.")
+                    edited_raw = eval_raw["edited_plan"]
+                    new_proposal, new_err = self._parse_and_validate(edited_raw, installed_packs)
+                    if not new_err:
+                        proposal = new_proposal
+                        raw = edited_raw
+                        proposal["reasoning"] += f"\n\n[Evaluator Note: Graph rewritten. Original confidence was {confidence}%. {eval_reasoning}]"
+                    else:
+                        logger.warning(f"Evaluator's edited plan had validation error ({new_err}). Reverting to Planner original.")
+                else:
+                    proposal["reasoning"] += f"\n\n[Evaluator Note: Graph approved with {confidence}% confidence. {eval_reasoning}]"
+            except Exception as e:
+                logger.warning(f"Evaluator LLM failed, using original plan. Error: {e}")
 
         # --- Save assistant turn ---
         assistant_turn = ConversationTurn(
