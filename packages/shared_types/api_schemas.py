@@ -5,7 +5,7 @@ Both the API routers and any test clients should import from here.
 """
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 # ── Block schemas ──────────────────────────────────────────────────────────
@@ -58,8 +58,7 @@ class ConversationTurnOut(BaseModel):
     proposal_json: Optional[Dict[str, Any]] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ConversationOut(BaseModel):
@@ -69,8 +68,7 @@ class ConversationOut(BaseModel):
     created_at: datetime
     turns: List[ConversationTurnOut] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ── Workflows ──────────────────────────────────────────────────────────────
@@ -93,8 +91,7 @@ class WorkflowResponse(WorkflowBase):
     parent_version_id: Optional[int] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WorkflowDetailResponse(WorkflowResponse):
@@ -124,8 +121,7 @@ class WorkflowRunResponse(BaseModel):
     ended_at: Optional[datetime] = None
     logs: Optional[Any] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 # ── Domain Packs ──────────────────────────────────────────────────────────
 
 class DomainPackResponse(BaseModel):

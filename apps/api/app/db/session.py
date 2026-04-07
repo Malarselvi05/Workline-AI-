@@ -1,6 +1,5 @@
 from sqlalchemy import create_engine, MetaData, event
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Query, with_loader_criteria, Session
+from sqlalchemy.orm import sessionmaker, Query, with_loader_criteria, Session, declarative_base
 import os
 from dotenv import load_dotenv
 from app.core.context import get_org_id

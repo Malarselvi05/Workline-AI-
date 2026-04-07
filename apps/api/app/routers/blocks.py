@@ -5,7 +5,7 @@ from app.auth.dependencies import require_viewer
 
 router = APIRouter(prefix="/blocks", tags=["blocks"])
 
-@router.get("", response_model=List[BlockDefinition], dependencies=[require_viewer])
+@router.get("", response_model=List[BlockDefinition], dependencies=[Depends(require_viewer)])
 async def list_blocks(pack: Optional[str] = None):
     """
     List all available blocks.
@@ -20,7 +20,7 @@ async def list_blocks(pack: Optional[str] = None):
         
     return blocks
 
-@router.get("/{block_type}", response_model=BlockDefinition, dependencies=[require_viewer])
+@router.get("/{block_type}", response_model=BlockDefinition, dependencies=[Depends(require_viewer)])
 async def get_block(block_type: str):
     """
     Get detailed definition for a specific block type.
