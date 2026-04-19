@@ -1,7 +1,7 @@
 > **Purpose**: Running state-of-the-codebase document for both human devs and AI assistants.
 > **Rule**: Every time you make significant code changes, update the relevant section of this file.
 > **Team Plan**: See [`TEAM_PLAN.md`](./TEAM_PLAN.md) for the full phase-by-phase checklist for Member J and Member M.
-> **Last Updated**: 2026-04-03 (Phase 3: J8 Scheduled Triggers + J9 On-Prem Docker Compose — complete)
+> **Last Updated**: 2026-04-19 (SEYON Operations Portal — Vertical Skin pivot complete)
 
 
 ---
@@ -21,6 +21,7 @@ Workline-AI/
 │   │   ├── app/
 │   │   │   ├── main.py         ✅ API entrypoint (planning + workflows + auth routers)
 │   │   │   ├── seed.py         ✅ DB seeder (demo orgs, users, workflows)
+│   │   │   ├── seyon_seed.py   ✅ One-time seeder — creates SEYON-Automation DAG (9 nodes) [SEYON]
 │   │   │   ├── ai/
 │   │   │   │   └── planner.py  ✅ GroqPlanner (llama-3.3-70b-versatile, real LLM) [J1]
 │   │   │   ├── auth/
@@ -30,7 +31,7 @@ Workline-AI/
 │   │   │   │   ├── celery_app.py   ✅ Celery + Redis broker config + beat_schedule for dynamic cron
 │   │   │   │   ├── context.py      ✅ Domain context string for LLM prompt
 │   │   │   │   ├── scheduler.py    ✅ Dynamic Celery beat scheduler [J8] — register/deregister/restore
-│   │   │   │   └── tasks.py        ✅ execute_workflow_task (Celery task)
+│   │   │   │   └── tasks.py        ✅ execute_workflow_task — full resumption support + org_id on runs [SEYON]
 │   │   │   ├── db/
 │   │   │   │   └── session.py      ✅ SQLite engine / PostgreSQL-ready, get_db dependency
 │   │   │   ├── models/
@@ -40,6 +41,7 @@ Workline-AI/
 │   │   │   │   ├── workflows.py    ✅ Full workflow CRUD + deploy + run + rollback + runs
 │   │   │   │   ├── planning.py     ✅ POST /plan + GET /conversations/{id} [J1]
 │   │   │   │   ├── blocks.py       ✅ GET /blocks, GET /blocks/{type} [M3]
+│   │   │   │   ├── runs.py         ✅ POST /workflows/{id}/runs (body: initial_input) + approve/reject nodes
 │   │   │   │   └── schedules.py    ✅ GET/PUT/DELETE /workflows/{id}/schedule [J8]
 │   │   │   ├── schemas/
 │   │   │   │   ├── auth.py         ✅ Login / token Pydantic schemas
@@ -52,7 +54,7 @@ Workline-AI/
 │   │   ├── .env.example        ✅ Template for new devs
 │   │   ├── requirements.txt    ✅ Python deps (groq replaces openai) [J1]
 │   │   ├── Dockerfile          ✅ API Docker image
-│   │   └── workline.db         ✅ SQLite dev database (seeded, all migrations applied)
+│   │   └── workline.db         ✅ SQLite dev database (seeded, SEYON workflow ID=2 present)
 │   │
 │   └── web/                    ✅ Frontend (Next.js 14, App Router)
 │       ├── app/
@@ -61,7 +63,8 @@ Workline-AI/
 │       │   ├── login/page.tsx      ✅ Login stub
 │       │   ├── dashboard/page.tsx  ✅ Dashboard (mock stats + workflow list)
 │       │   ├── automate/page.tsx   ✅ Canvas + chatbot split-view
-│       │   └── workflow/[id]/page.tsx ✅ Workflow detail page
+│       │   ├── workflow/[id]/page.tsx ✅ Workflow detail page
+│       │   └── seyon/page.tsx      ✅ SEYON Operations Portal — 4-tab vertical skin [SEYON]
 │       ├── components/
 │       │   ├── canvas/
 │       │   │   ├── BlockPalette.tsx    ✅ Searchable palette + Domain Pack toggle [J2]
@@ -72,13 +75,14 @@ Workline-AI/
 │       │   ├── chatbot/
 │       │   │   └── ChatPanel.tsx       ✅ Per-block reasoning accordion + file attach + conversation restore [J3]
 │       │   └── workspace/
-│       │       └── Sidebar.tsx         ✅ Status dots + Domain Pack link + badge-warning for draft [J4]
+│       │       └── Sidebar.tsx         ✅ SEYON Portal nav entry (top) + status dots + Domain Pack link [J4/SEYON]
 │       ├── stores/
 │       │   ├── canvasStore.ts          ✅ undo/redo history · diff highlights · auto-layout · domain pack toggle [J2]
 │       │   ├── chatStore.ts            ✅ conversationId tracking · loadConversation() · POST /plan with conv_id [J3]
 │       │   └── workspaceStore.ts       ✅ workflows[] · activeWorkflowId · addWorkflowTab() · updateWorkflowStatus() · renameWorkflowTab() [J4]
 │       ├── lib/
-│       │   └── api.ts              ✅ Typed fetch wrappers (all endpoints, auth headers) [Shared Setup]
+│       │   ├── api.ts              ✅ Typed fetch wrappers + SEYON helpers (triggerSeyonRun, getLatestRun, getAllRuns) [Shared Setup/SEYON]
+│       │   └── seyon-config.ts     ✅ SEYON workflow ID, node ID map, phase node lists [SEYON]
 │       ├── .env.example            ✅ NEXT_PUBLIC_API_URL, NEXT_PUBLIC_WS_URL [Shared Setup]
 │       ├── next.config.mjs         ✅
 │       └── package.json            ✅ web package (npm workspace)
@@ -174,12 +178,13 @@ docs/
 
 | Component              | Path                                        | Status                                                                         |
 | ---------------------- | ------------------------------------------- | ------------------------------------------------------------------------------ |
+| **SEYON Portal**       | `app/seyon/page.tsx`                        | ✅ Done — 4-tab vertical skin (Dashboard/Intake/Vault/Dispatch) + Ghost toggle [SEYON] |
 | Canvas split-view page | `app/automate/page.tsx`                     | ✅ Done — Ctrl+Z/Y shortcuts, context menu suppression [J2]                     |
 | Workflow detail page   | `app/workflow/[id]/page.tsx`                | ✅ Done — real API fetch, Deploy button, Rollback UI in Settings tab [J4]       |
 | Dashboard              | `app/dashboard/page.tsx`                    | ✅ Done (mock stats)                                                            |
 | Login stub             | `app/login/page.tsx`                        | ✅ Done                                                                         |
 | ChatPanel (chatbot)    | `components/chatbot/ChatPanel.tsx`          | ✅ Done — conv ID badge, History restore, per-block reasoning, file attach [J3] |
-| Sidebar                | `components/workspace/Sidebar.tsx`          | ✅ Done — status dots, Domain Pack link, badge-warning [J4]                     |
+| Sidebar                | `components/workspace/Sidebar.tsx`          | ✅ Done — SEYON Portal entry (top, gradient) + status dots + Domain Pack link [J4/SEYON] |
 | BlockPalette           | `components/canvas/BlockPalette.tsx`        | ✅ Done — search + domain pack toggle + installation logic [M9]                 |
 | Packs UI               | `app/packs/page.tsx`                        | ✅ Done — Domain Pack Manager page [M9]                                         |
 | Toolbar                | `components/canvas/Toolbar.tsx`             | ✅ Done — Undo/Redo/Auto-layout/ZoomFit/Validate/Save(modal)/Deploy(modal) [J4] |
@@ -189,7 +194,8 @@ docs/
 | canvasStore            | `stores/canvasStore.ts`                     | ✅ Done — undo/redo, diff, auto-layout, domain pack [J2]                        |
 | chatStore              | `stores/chatStore.ts`                       | ✅ Done — conversationId, loadConversation() [J3]                               |
 | workspaceStore         | `stores/workspaceStore.ts`                  | ✅ Done — addWorkflowTab(), updateWorkflowStatus(), renameWorkflowTab() [J4]    |
-| API service layer      | `lib/api.ts`                                | ✅ Done (all endpoints, auth headers, getSchedule/setSchedule/deleteSchedule)   |
+| API service layer      | `lib/api.ts`                                | ✅ Done — all endpoints + SEYON helpers (triggerSeyonRun, getLatestRun, getAllRuns) [SEYON] |
+| SEYON config           | `lib/seyon-config.ts`                       | ✅ Done — SEYON_WORKFLOW_ID=2, node ID map, phase node lists [SEYON]            |
 
 ---
 
@@ -235,11 +241,11 @@ docs/
 ### 🟠 Backend
 - [ ] **Authentication wiring**: JWT login/register exist but RBAC is not enforced on all routes
 - [ ] **Drift alerts**: no monitoring/alerting logic yet
-- [ ] **MinIO file storage**: routes exist but actual MinIO calls not wired
+- [ ] **MinIO file storage**: routes exist but actual MinIO calls not wired (SEYON Intake simulates upload via JSON payload)
 
-### 🟡 Frontend (J4 complete — Phase 2 remaining)
-- [ ] **Dashboard**: mock data, not wired to real API (J5)
-- [ ] **Human review**: no UI for awaiting_review run state yet (M6)
+### 🟡 Frontend
+- [ ] **Old Dashboard**: `app/dashboard/page.tsx` still uses mock data — but SEYON Dashboard tab uses real API
+- [ ] **Human review UI**: SEYON Dispatch tab handles this for SEYON runs; general awaiting_review state has no dedicated UI outside SEYON portal (M6)
 
 ### 🟢 Done ✅
 - J1 — Conversation & Planning Backend (real Groq LLM)
@@ -252,6 +258,7 @@ docs/
 - M10 — CI/CD + Performance (Full-Stack): GitHub Actions workflow (`ci.yml`), benchmark Pytests for overhead limitations, SQLite/PG append-only triggers validated via tests, ADR documents.
 - M11 — UI Polish + Accessibility: Dark mode localStorage toggle, fully responsive Canvas + Sidebar, zero-data Empty Skeletons, class-component Error Boundaries, full modal Keyboard Trap logic.
 - Shared Setup: shared-types, Turborepo, env templates, api.ts
+- **SEYON** — Vertical skin pivot: 4-tab operations portal (`/seyon`), SEYON-Automation DAG seeded (ID=2, 9 nodes), Ghost Canvas toggle (iframe overlay), Sidebar SEYON entry, api.ts SEYON helpers, seyon-config.ts, seyon_seed.py. All calls use existing backend — zero new API routes.
 
 ---
 

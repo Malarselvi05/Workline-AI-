@@ -18,6 +18,7 @@ import {
     Inbox,
     UserCheck,
     Hammer,
+    Cpu,
 } from 'lucide-react';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useChatStore } from '@/stores/chatStore';
@@ -182,12 +183,15 @@ export default function Sidebar() {
 
             {/* ── Nav ── */}
             <nav style={{ padding: '12px 8px', flex: 1, overflowY: 'auto' }}>
-                <div style={{ marginBottom: 8 }}>
+
+                {/* ── SEYON Operations Portal ── */}
+                <div style={{ marginBottom: 16 }}>
                     {!sidebarCollapsed && (
                         <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 12px', marginBottom: 6 }}>
-                            Navigation
+                            SEYON OPERATIONS
                         </p>
                     )}
+                    
                     {NAV_ITEMS.map((item) => {
                         const isActive = pathname === item.href;
                         return (

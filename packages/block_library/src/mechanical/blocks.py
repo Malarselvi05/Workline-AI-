@@ -7,31 +7,65 @@ import re
 
 logger = logging.getLogger(__name__)
 
+# In-memory duplicate tracking (resets on server restart — acceptable for demo)
+_SEEN_DOCUMENT_HASHES: set = set()
+
 class DrawingClassifierBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
-        # F2: Auto Document Classification (ML-based)
-        print(f"[BLOCK] DrawingClassifierBlock.run | Starting classification. Sandbox={self.is_sandbox}")
         text = ""
+        filename = ""
         for val in input_data.values():
             if isinstance(val, dict) and "text" in val:
                 text = val["text"]
+                filename = val.get("filename", "")
                 break
 
-        try:
-            from app.services.ml_service import MLService
-            ml = MLService()
-            result = await ml.classify_document(text)
-            # Map general types to drawing-specific types if needed
-            if result["type"] == "drawing":
-                result["drawing_type"] = "Engineering Drawing"
-            else:
-                result["drawing_type"] = f"Other ({result['type']})"
-            return result
-        except Exception as e:
-            logger.warning(f"ML classification failed: {e}")
+        print(f"[BLOCK] DrawingClassifierBlock: Classifying '{filename}' ({len(text)} chars of OCR text)")
 
-        await asyncio.sleep(1.0)
-        return {"drawing_type": "Assembly", "confidence": 0.6, "method": "Mock"}
+        # Try LLM classification
+        try:
+            from app.services.llm import LLMService
+            import json
+            llm = LLMService()
+            if llm.client:
+                categories = ["General Assembly", "Sub-Assembly", "Part Drawing", "Schematic", "BOM List"]
+                prompt = (
+                    f"Classify this mechanical engineering document text into exactly one of these categories: {categories}.\n\n"
+                    f"Document text (first 600 chars):\n{text[:600]}\n\n"
+                    f"Respond with JSON only, no markdown: "
+                    f'{{"drawing_type": "<one of the categories above>", "confidence": <number 0.0 to 1.0>, "reason": "<one sentence>"}}'
+                )
+                response = await llm.chat_completion([{"role": "user", "content": prompt}])
+                data = json.loads(response) if isinstance(response, str) else response
+                return {
+                    "drawing_type": data.get("drawing_type", "General Assembly"),
+                    "confidence": float(data.get("confidence", 0.8)),
+                    "metadata": {"reason": data.get("reason", ""), "engine": "groq_llm"}
+                }
+        except Exception as e:
+            print(f"[BLOCK] DrawingClassifierBlock: LLM failed ({e}), using keyword fallback")
+
+        # Keyword fallback — deterministic, no random
+        text_upper = text.upper()
+        if "ASSY" in text_upper or "ASSEMBLY" in text_upper:
+            drawing_type = "General Assembly"
+        elif "EXPLODED" in text_upper or "SUB-ASSY" in text_upper:
+            drawing_type = "Sub-Assembly"
+        elif "PART" in text_upper or "DRG" in text_upper:
+            drawing_type = "Part Drawing"
+        elif "SCHEMATIC" in text_upper or "WIRING" in text_upper:
+            drawing_type = "Schematic"
+        elif "BOM" in text_upper or "BILL OF MATERIAL" in text_upper:
+            drawing_type = "BOM List"
+        else:
+            drawing_type = "General Assembly"  # Safe default — no random
+
+        await asyncio.sleep(0.5)
+        return {
+            "drawing_type": drawing_type,
+            "confidence": 0.65,
+            "metadata": {"engine": "keyword_fallback", "reason": f"Keyword match in OCR text for '{filename}'"}
+        }
 
 class StoreFileBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
@@ -100,19 +134,30 @@ class POExtractorBlock(BaseBlock):
 
 class DuplicateDrawingDetectorBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
-        # Detect if current drawing already exists (deduplication)
-        print(f"[BLOCK] DuplicateDrawingDetectorBlock.run | Starting duplicate check.")
-        await asyncio.sleep(0.8)
+        import hashlib
+        # Collect text + filename to build a document fingerprint
+        text = ""
+        filename = ""
+        for val in input_data.values():
+            if isinstance(val, dict) and "text" in val:
+                text = val.get("text", "")
+                filename = val.get("filename", "")
+                break
+
+        fingerprint_source = f"{filename}::{text[:300]}"
+        doc_hash = hashlib.sha256(fingerprint_source.encode()).hexdigest()
+        short_hash = doc_hash[:12]
+
+        # Check against module-level seen-set (persists for server lifetime)
+        is_duplicate = doc_hash in _SEEN_DOCUMENT_HASHES
+        _SEEN_DOCUMENT_HASHES.add(doc_hash)
+
+        if is_duplicate:
+            print(f"[BLOCK] DuplicateDrawingDetectorBlock: DUPLICATE detected! hash={short_hash}")
+            return {"is_duplicate": True, "match_id": short_hash, "max_similarity": 1.0, "engine": "sha256"}
         
-        # Simulation: 10% chance of duplicate
-        is_duplicate = random.random() < 0.1
-        similarity = random.uniform(0.95, 0.99) if is_duplicate else random.uniform(0.1, 0.4)
-        
-        return {
-            "is_duplicate": is_duplicate,
-            "max_similarity": float(f"{similarity:.3f}"),
-            "match_id": f"DWG-{random.randint(1000, 9999)}" if is_duplicate else None
-        }
+        print(f"[BLOCK] DuplicateDrawingDetectorBlock: New document, hash={short_hash}")
+        return {"is_duplicate": False, "match_id": None, "max_similarity": 0.0, "doc_hash": short_hash, "engine": "sha256"}
 
 class TaskAllocationBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
@@ -143,27 +188,70 @@ class TaskAllocationBlock(BaseBlock):
 
 class TeamLeaderRecommenderBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
-        # F3: Intelligent Engineer Allocation (Recommendation Engine)
-        print(f"[BLOCK] TeamLeaderRecommenderBlock.run | Recommending best lead.")
-        
-        mock_engineers = [
-            {"name": "Engineer A", "skills": "CAD Design Mechanical Assembly", "workload_percentage": 85},
-            {"name": "Engineer B", "skills": "FEA Stress Analysis Simulation", "workload_percentage": 20},
-            {"name": "Engineer C", "skills": "BOM Management Procurement", "workload_percentage": 45}
+        # Collect context from upstream blocks
+        drawing_type = "General Assembly"
+        po_number = "Unknown"
+        po_value = "Unknown"
+        vendor = "Unknown"
+
+        for val in input_data.values():
+            if isinstance(val, dict):
+                if "drawing_type" in val:
+                    drawing_type = val["drawing_type"]
+                if "po_number" in val:
+                    po_number = val.get("po_number", "Unknown")
+                    po_value = str(val.get("total_value", "Unknown"))
+                    vendor = val.get("vendor", "Unknown")
+
+        # SEYON team roster — update these names to real SEYON staff for production
+        team_roster = [
+            {"name": "Arun Kumar",  "role": "Senior Mechanical Lead",  "speciality": "General Assembly, Sub-Assembly"},
+            {"name": "Priya Nair",  "role": "Drawing Review Engineer",  "speciality": "Part Drawing, Schematic"},
+            {"name": "Suresh Babu", "role": "Procurement Coordinator",  "speciality": "BOM List, PO Verification"},
+            {"name": "Meena Raj",   "role": "QA Lead",                  "speciality": "All types — QA sign-off"},
         ]
-        
-        task_desc = "Mechanical Assembly and CAD Design for new actuator unit"
-        
+
         try:
-            from app.services.ml_service import MLService
-            ml = MLService()
-            result = await ml.recommend_engineer(task_desc, mock_engineers)
-            print(f"[BLOCK] TeamLeaderRecommenderBlock.run | ML recommendation: {result}")
-            return result
+            from app.services.llm import LLMService
+            import json
+            llm = LLMService()
+            if llm.client:
+                roster_text = "\n".join([f"- {p['name']} ({p['role']}): specialises in {p['speciality']}" for p in team_roster])
+                prompt = (
+                    f"You are a job allocation coordinator at SEYON Engineering.\n"
+                    f"Job details:\n"
+                    f"  Drawing type: {drawing_type}\n"
+                    f"  PO Number: {po_number}  |  PO Value: {po_value}  |  Vendor: {vendor}\n\n"
+                    f"Available team leaders:\n{roster_text}\n\n"
+                    f"Select the best-suited team leader for this job and give a brief reason.\n"
+                    f"Respond with JSON only, no markdown: "
+                    f'{{"recommended_leader": "<full name>", "reasoning": "<2 sentences max>", "available": true}}'
+                )
+                response = await llm.chat_completion([{"role": "user", "content": prompt}])
+                data = json.loads(response) if isinstance(response, str) else response
+                return {
+                    "recommended_leader": data.get("recommended_leader", team_roster[0]["name"]),
+                    "reasoning": data.get("reasoning", "Selected based on speciality alignment."),
+                    "available": True
+                }
         except Exception as e:
-            logger.error(f"Recommendation failed: {e}")
-            
-        return {"engineer": "Engineer B", "score": 0.91, "reason": "High skill match (Mock)"}
+            print(f"[BLOCK] TeamLeaderRecommenderBlock: LLM failed ({e}), using rule-based fallback")
+
+        # Rule-based fallback — deterministic, no random
+        rule_map = {
+            "General Assembly": "Arun Kumar",
+            "Sub-Assembly": "Arun Kumar",
+            "Part Drawing": "Priya Nair",
+            "Schematic": "Priya Nair",
+            "BOM List": "Suresh Babu",
+        }
+        leader = rule_map.get(drawing_type, "Meena Raj")
+        await asyncio.sleep(0.5)
+        return {
+            "recommended_leader": leader,
+            "reasoning": f"{leader} has the most relevant experience for {drawing_type} document review at SEYON.",
+            "available": True
+        }
 
 class DelayPredictorBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:

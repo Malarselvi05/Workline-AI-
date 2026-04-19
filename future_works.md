@@ -21,8 +21,8 @@ This document maps the current state of WorkLine AI against the 13 required core
 | **F11** | Simulation Mode | 🟢 Done | **Dashboard** | "Run Simulation" SEYON Scenarios |
 | **F12** | Timeline View | 🟢 Done | **Dashboard** | Timeline Component (Run Logs) |
 | **F13** | Feedback Learning | 🔴 Missing | **Dispatch** | Human-in-the-loop override |
-| **F14** | Bending Simulation | 🔴 Pending | **Bending** | Physics-based bending estimation |
-| **F15** | Production Queue | 🔴 Pending | **Bending** | Real-time machine status tracking |
+| **F14** | Bending Simulation | 🟡 In Progress | **Bending** | Physics-based bending estimation |
+| **F15** | Production Queue | 🟡 In Progress | **Bending** | Real-time machine status tracking |
 
 ---
 
@@ -40,8 +40,10 @@ This document maps the current state of WorkLine AI against the 13 required core
 - [ ] **Delay Predictor**: New service/block using a pre-trained (on synthetic data) RandomForest model.
 
 ### Phase 4.3: Advanced UI & Simulation
-- [ ] **Explainable AI Dashboard**: Add a component to visualize `feature_importances_` for delay risk.
-- [ ] **Simulation Manager**: Add "Run Demo" button that seeds the DB with synthetic files/runs.
+- [x] **Explainable AI Dashboard**: Add a component to visualize `feature_importances_` for delay risk.
+- [x] **Bending Dashboard**: Implement real-time telemetry visualization for shop floor machines.
+- [ ] **Machine Telemetry**: Connect Bending tab to `workspaceStore` for real-time progress updates.
+- [x] **Simulation Manager**: Add "Run Demo" button that seeds the DB with synthetic files/runs.
 - [ ] **Timeline View**: Build the `Timeline` component to display `RunNodeState` logs.
 - [ ] **Smart Alerts**: Integrate toast notifications/sidebar badges triggered by the Delay Prediction output.
 

@@ -50,7 +50,7 @@ async def trigger_run(
 async def list_workflow_runs(
     workflow_id: int, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     """
     List all runs for a specific workflow.
@@ -66,7 +66,7 @@ async def list_workflow_runs(
 async def get_run_detail(
     run_id: int, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     """
     Get detailed status of a run, including all node states.
@@ -132,7 +132,7 @@ async def get_run_detail(
 async def cancel_run(
     run_id: int, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     """
     Cancel an in-progress run.
@@ -160,7 +160,7 @@ async def approve_node(
     run_id: int, 
     node_id: str,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     """
     Approve a waiting node (Human Review).
@@ -205,7 +205,7 @@ async def reject_node(
     run_id: int, 
     node_id: str,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     """
     Reject a waiting node (Human Review).

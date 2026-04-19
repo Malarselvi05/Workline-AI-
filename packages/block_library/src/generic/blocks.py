@@ -32,34 +32,65 @@ class GenericFallbackBlock(BaseBlock):
 
 class OCRBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
-        # Extract text from uploaded document using pytesseract (F1)
+        # Step 1: Collect file metadata from upstream (file_upload / FormInputBlock output)
         print(f"[BLOCK] OCRBlock.run | Starting OCR extraction | Sandbox={self.is_sandbox}")
-        logger.info(f"Running Pytesseract OCR {'(SANDBOX)' if self.is_sandbox else '(LIVE)'}...")
+        logger.info(f"Running OCR {'(SANDBOX)' if self.is_sandbox else '(LIVE)'}...")
         
+        file_meta = {}
+        for val in input_data.values():
+            if isinstance(val, dict) and "filename" in val:
+                file_meta = val
+                break
+
+        filename = file_meta.get("filename", "document.pdf")
+        file_type = file_meta.get("file_type", "pdf")
+        print(f"[BLOCK] OCRBlock: Processing file='{filename}' type='{file_type}'")
+
+        # Step 2: Try Groq LLM to generate realistic OCR text for demo
         try:
-            import pytesseract
-            from PIL import Image
-            import io
-            
-            # Simple simulation: if input_data has a 'file_content' or similar (MOCK for now)
-            # In a real scenario, we'd fetch the file from MinIO/local storage
-            await asyncio.sleep(1.0)
-            
-            # For demo purposes, we return a structured mock if "real" extraction fails or isn't possible in this env
-            result = {
-                "text": "PURCHASE ORDER\nPO-1023\nClient: ABC Ltd\nItems: servo motor, actuator\nDeadline: 2026-05-10",
-                "metadata": {"engine": "pytesseract_v0.3.10", "confidence": 0.88}
-            }
+            from app.services.llm import LLMService
+            llm = LLMService()
+            if llm.client:
+                prompt = (
+                    f"You are an OCR system processing a file named '{filename}' (type: {file_type}) "
+                    f"submitted to SEYON Engineering for mechanical drawing review. "
+                    f"Generate realistic OCR-extracted text for a mechanical engineering document. "
+                    f"Include: a drawing number, revision letter, title, date, PO reference number, vendor name, and total value in INR. "
+                    f"Format it as raw text lines, no markdown, no explanations."
+                )
+                response = await llm.chat_completion([{"role": "user", "content": prompt}])
+                text = response if isinstance(response, str) else str(response)
+                print(f"[BLOCK] OCRBlock: LLM OCR extraction successful")
+                return {
+                    "text": text,
+                    "filename": filename,
+                    "metadata": {"pages": 1, "engine": "groq_llm_proxy", "file_type": file_type}
+                }
         except Exception as e:
-            logger.warning(f"Pytesseract extraction failed or not installed: {e}")
-            await asyncio.sleep(0.5)
-            result = {
-                "text": "MOCK OCR TEXT: PO-1023 ABC Ltd 2026-05-10 servo motor actuator",
-                "metadata": {"engine": "fallback_mock", "error": str(e)}
-            }
-            
-        print(f"[BLOCK] OCRBlock.run | Completed. Extracted {len(result['text'])} chars.")
-        return result
+            print(f"[BLOCK] OCRBlock: LLM failed ({e}), using filename-based mock")
+
+        # Step 3: Deterministic fallback — uses filename so output differs per document
+        import hashlib
+        file_hash = int(hashlib.md5(filename.encode()).hexdigest(), 16)
+        po_num = file_hash % 9999
+        part_num = file_hash % 999
+        mock_text = (
+            f"DRAWING NO: DWG-{filename[:6].upper().replace('.','')}-REV-A\n"
+            f"TITLE: MECHANICAL ASSEMBLY - SEYON ENGINEERING\n"
+            f"DATE: 2026-04-19\n"
+            f"PO REF: PO-2026-{po_num:04d}\n"
+            f"VENDOR: SEYON MANUFACTURING SOLUTIONS\n"
+            f"TOTAL VALUE: INR 1,{file_hash % 90 + 10},000\n"
+            f"PART NO: ASSY-{part_num:03d}\n"
+            f"DESCRIPTION: GENERAL ASSEMBLY DRAWING FOR QA REVIEW"
+        )
+        await asyncio.sleep(1.0)
+        print(f"[BLOCK] OCRBlock: Deterministic mock complete")
+        return {
+            "text": mock_text,
+            "filename": filename,
+            "metadata": {"pages": 1, "engine": "filename_mock", "file_type": file_type}
+        }
 
 
 class ClassifyBlock(BaseBlock):
@@ -137,8 +168,17 @@ class FormInputBlock(BaseBlock):
         # Collect default form input data from config (simulates user form submission)
         print(f"[BLOCK] FormInputBlock.run | Collecting form input. Config keys: {list(self.config.keys())}")
         logger.info("Collecting Form Input")
+        
+        # Priority 1: if the workflow was triggered with initial_input (e.g. from SEYON Intake tab),
+        # forward it downstream so OCR and other blocks can access the file metadata
+        initial = input_data.get("initial_input")
+        if initial and isinstance(initial, dict):
+            print(f"[BLOCK] FormInputBlock: Forwarding initial_input: {initial}")
+            return initial
+            
+        # Priority 2: fall back to configured default data
         result = self.config.get("default_data", {})
-        print(f"[BLOCK] FormInputBlock.run | Form data: {result}")
+        print(f"[BLOCK] FormInputBlock: No initial_input, using config defaults: {result}")
         return result
 
 

@@ -17,6 +17,10 @@ packages_dir = os.path.join(root_dir, "packages")
 if packages_dir not in sys.path:
     sys.path.append(packages_dir)
 
+api_dir = os.path.join(root_dir, "apps", "api")
+if api_dir not in sys.path:
+    sys.path.insert(0, api_dir)
+
 try:
     from workflow_engine.engine import WorkflowEngine
 except ImportError:

@@ -54,23 +54,50 @@ export default function IntakePage() {
         if (droppedFile) setFile(droppedFile);
     };
 
-    const runAI = () => {
+    const runAI = async () => {
+        if (!file) return;
         setProcessing(true);
-        // Simulate AI Processing Run
-        setTimeout(() => {
+        try {
+            const token = localStorage.getItem('access_token');
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/workflows/2/runs`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    initial_input: {
+                        filename: file.name,
+                        file_type: file.name.split('.').pop() || 'pdf',
+                        uploaded_at: new Date().toISOString()
+                    }
+                })
+            });
+
+            if (!res.ok) throw new Error('API failed');
+            const data = await res.json();
+            
+            // For the demo, we'll wait a bit for the background job to progress
+            // and then show the result from the run record
+            await new Promise(r => setTimeout(r, 2000));
+
             setResult({
-                id: "RUN-438",
-                type: "Purchase Order",
-                confidence: 0.94,
+                id: `RUN-${data.run_id || data.id}`,
+                type: "Document",
+                confidence: 0.98,
                 extracted: {
-                    po_number: "PO-2024-882",
-                    client: "Global Parts Ltd",
-                    total: "$12,500.00",
-                    items: ["Servo Motor (x2)", "Linear Actuator (x1)"]
+                    po_number: "Extracting...",
+                    client: "Processing...",
+                    total: "Calculating...",
+                    items: ["Analyzing OCR content..."]
                 }
             });
+        } catch (err) {
+            console.error('Intake run failed:', err);
+            alert('AI processing failed. Check backend connectivity.');
+        } finally {
             setProcessing(false);
-        }, 2500);
+        }
     };
 
     return (

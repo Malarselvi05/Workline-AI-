@@ -275,6 +275,7 @@ This is the **Windows File Explorer metaphor** — left panel = runs as folders,
 
 ---
 
+
 ## TAB 5 — 🔨 BENDING (Phase 3: Shop Floor Monitoring)
 
 > *"The job is assigned; now I track the physical fabrication process."*
@@ -297,11 +298,36 @@ This is the **Windows File Explorer metaphor** — left panel = runs as folders,
 │              │   │  • Material: 3mm Alum                  ✅ Verified  │   │
 │              │   │  • Safety Gate: CLOSED                              │   │
 │              │   └─────────────────────────────────────────────────────┘   │
+
+## TAB 4 — 🧑‍💼 DISPATCH (after "Assign" is clicked)
+
+```
+┌──────────────┬──────────────────────────────────────────────────────────────┐
+│  SIDEBAR     │  🧑‍💼 Dispatch — Assignment Confirmed!     [ ⚡ Show Canvas ]  │
+│              │  ─────────────────────────────────────────────────────────  │
+│  🧑‍💼 Dispatch◄│                                                              │
+│              │                                                              │
+│              │          ✅   Assignment Complete                            │
+│              │                                                              │
+│              │          Job PO-2024-882 has been assigned to:              │
+│              │                                                              │
+│              │          ┌───────────────────────────────────────────┐      │
+│              │          │              Jane Smith                    │      │
+│              │          │          Lead Architect                    │      │
+│              │          │                                            │      │
+│              │          │  "Based on historical expertise in         │      │
+│              │          │   General Assembly management."            │      │
+│              │          │                                            │      │
+│              │          │  Assigned by: Admin   At: 11:32 AM        │      │
+│              │          └───────────────────────────────────────────┘      │
+│              │                                                              │
+│              │          [ 📊 See on Dashboard ] [ 📥 Process Next Doc ]    │
+│              │                                                              │
+
 └──────────────┴──────────────────────────────────────────────────────────────┘
 ```
 
 ---
-
 ## THE GHOST TOGGLE — How It Works on Any Tab
 
 The toggle is a small pill button in the **top-right of every tab's header bar**:
