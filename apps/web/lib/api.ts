@@ -416,3 +416,27 @@ export async function uninstallPack(name: string): Promise<any> {
   console.log("[JS] api.ts | uninstallPack | L388: Data processing");
     return request(`/packs/${name}/uninstall`, { method: 'POST' });
 }
+
+// ── SEYON Portal Helpers ───────────────────────────────────────────────────
+// These reuse existing endpoints — no new backend routes needed.
+
+export async function triggerSeyonRun(
+    workflowId: number,
+    inputData: Record<string, unknown>
+): Promise<{ task_id?: string; status: string; mode: string; run_id?: number; result?: unknown }> {
+    return request(`/workflows/${workflowId}/runs`, {
+        method: 'POST',
+        body: JSON.stringify({ initial_input: inputData }),
+    });
+}
+
+export async function getLatestRun(workflowId: number): Promise<WorkflowRun | null> {
+    const runs = await request<WorkflowRun[]>(`/workflows/${workflowId}/runs`);
+    if (!runs || runs.length === 0) return null;
+    return runs.sort((a, b) => b.id - a.id)[0];
+}
+
+export async function getAllRuns(workflowId: number): Promise<WorkflowRun[]> {
+    const runs = await request<WorkflowRun[]>(`/workflows/${workflowId}/runs`);
+    return (runs || []).sort((a, b) => b.id - a.id);
+}

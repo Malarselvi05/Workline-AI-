@@ -1,171 +1,200 @@
-# ⚡ WorkLine AI: The Agentic Automation Platform
+# ⚡ WorkLine AI — SEYON Operations Portal
 
-**WorkLine AI** is a production-ready, no-code, graph-based automation platform (similar to n8n) that leverages an Agentic Chatbot to convert natural language into executable AI pipelines. It's designed to automate manual, fragmented business processes across various domains.
+**WorkLine AI** is a production-ready, graph-based AI automation platform. It has been purpose-built into the **SEYON Operations Portal** — a vertical SaaS solution that automates SEYON's two-phase document and job management process using real AI processing on a live execution engine.
 
 ---
 
-## 🚀 Core Features & Capabilities
+## 🎯 What It Does (SEYON Context)
 
-### 1. 🎨 Intelligent Workflow Canvas
-*   **Visual Editor:** Built with **React Flow**, providing a high-performance, interactive drag-and-drop workspace.
-*   **Custom Nodes:** Sleek, icon-driven nodes for OCR, AI Classification, Human Review, Database Storage, and more.
-*   **Auto-Layout:** The graph automatically centers and zooms to accommodate AI-generated designs.
+WorkLine AI is "overfitted" to solve SEYON's specific problem:
+
+| Phase | What the AI automates |
+|---|---|
+| **Phase 1 — Document Intake** | Collects incoming reference documents → OCR extraction → Drawing classification → PO data extraction → Duplicate detection → Document indexing |
+| **Phase 2 — Job Dispatch** | Analyses job scope → Evaluates team leader workload & skills → Recommends best-fit team leader → Admin confirms assignment |
+
+---
+
+## 🖥️ The SEYON Operations Portal (`/seyon`)
+
+The primary interface for end users. Four purpose-built tabs:
+
+| Tab | Purpose |
+|---|---|
+| **📊 Dashboard** | KPI monitoring — docs processed, success rate, avg time, pending reviews. Live run history table and team workload. |
+| **📥 Intake** | Drag & drop a document → triggers the SEYON-Automation DAG → watch each AI node tick off live. |
+| **🗂️ Vault** | Windows File Explorer–style view of every run's AI outputs — OCR text, drawing type, PO data, duplicate check. |
+| **🧑‍💼 Dispatch** | AI-ranked team leader recommendations with reasoning and workload bars. Admin clicks "Confirm Assignment" to approve. |
+
+**⚡ Ghost Toggle** — A pill button on every tab reveals the underlying React Flow canvas as a full-screen overlay, showing the real AI node graph running live. Demonstrates the "nervous system" behind the clean UI.
+
+---
+
+## 🚀 Core Platform Features
+
+### 1. 🎨 Intelligent Workflow Canvas (Developer Mode)
+- **Visual Editor:** React Flow drag-and-drop DAG builder
+- **Custom Nodes:** OCR, Drawing Classifier, PO Extractor, Duplicate Detector, Team Leader Recommender, Human Review, and more
+- **Auto-Layout + Undo/Redo:** Full graph management tooling
 
 ### 2. 🤖 AI Architect (Agentic Chatbot)
-*   **Natural Language to DAG:** Describe your goal (e.g., "Review resumes for hiring") and the AI designs the full Directed Acyclic Graph (DAG) live.
-*   **Reasoning Engine:** The AI explains *why* it chose specific blocks and how the data will flow between them.
-*   **Contextual Understanding:** Supports complex logic like "Human-in-the-loop" and "Conditional Routing."
+- **Natural Language to DAG:** Describe a goal → AI designs the full pipeline
+- **Real LLM:** Groq `llama-3.3-70b-versatile` with JSON mode + DAG validation
+- **Contextual conversation:** Persistent multi-turn chat tied to each workflow
 
-### 3. 📦 Domain-Specific Power Packs
-*   **Generic Pack:** Standard blocks for Document Intake (OCR), Parsing, and API Notifications.
-*   **Mechanical Engineering Pack:** Specialized blocks for Drawing Classification, Duplicate Detector, and PO Data Extraction.
-*   **HR & Support Packs:** Automated resume filtering and sentiment-based ticket routing.
+### 3. 📦 Domain-Specific Block Library
+- **Mechanical Pack:** `drawing_classifier`, `po_extractor`, `duplicate_detector`, `team_leader_recommender`
+- **Generic Pack:** `ocr`, `classify`, `store`, `human_review`, `notify`, `router`, and more
+- **21 block types** across 9 categories
 
 ### 4. ⚙️ Robust Execution Engine
-*   **Topological Sorting:** Ensures tasks run in the correct logical order.
-*   **Asynchronous Processing:** Powered by **Celery & Redis** for long-running heavy AI tasks.
-*   **Universal Fallback:** Automatically switches to synchronous execution if background workers aren't available.
+- **Topological DAG execution** with wave-based parallel processing
+- **Full resumption support** — workflows pause at human review and resume on approval
+- **Celery + Redis** for async background tasks, with sync fallback for dev
 
 ---
 
 ## 🛠️ Technology Stack
 
-| Component         | Technology                                                               |
-| ----------------- | ------------------------------------------------------------------------ |
-| **Frontend**      | Next.js 14, React Flow, Zustand, Tailwind CSS, Lucide                    |
-| **Backend**       | FastAPI (Python 3.11+), SQLAlchemy, Pydantic                             |
-| **Database**      | SQLite (Default for MVP) / PostgreSQL (Ready)                            |
-| **Worker Engine** | Celery, Redis                                                            |
-| **AI Processing** | Groq `llama-3.3-70b-versatile` (Planning), DAG validation + Dagre layout |
+| Component         | Technology                                                                |
+| ----------------- | ------------------------------------------------------------------------- |
+| **Frontend**      | Next.js 14, React Flow, Zustand, Tailwind CSS, Lucide                     |
+| **Backend**       | FastAPI (Python 3.11+), SQLAlchemy, Pydantic                              |
+| **Database**      | SQLite (default / dev) · PostgreSQL (production-ready)                    |
+| **Worker Engine** | Celery, Redis                                                             |
+| **AI — Planning** | Groq `llama-3.3-70b-versatile` (JSON mode, multi-turn conversation)       |
+| **AI — Blocks**   | OCR, Drawing Classifier, PO Extractor, Duplicate Detector, TL Recommender |
 
 ---
 
 ## 🏁 Getting Started
 
-### 1. Backend Setup (API)
+### 1. Backend
+
 ```powershell
-# Navigate to the API folder
 cd apps/api
 
-# Install dependencies
+# Install dependencies (use venv)
+python -m venv .venv
+.\.venv\Scripts\activate
 pip install -r requirements.txt
 
 # Set your Groq API key in apps/api/.env
-# Get a free key at https://console.groq.com
 # GROQ_API_KEY=gsk_...
 
-# Run migrations (Ensures DB schema is up-to-date)
+# Run migrations
 alembic upgrade head
 
-# Initialize the database (Seeds demo workflows and default admin)
-python app/seed_postgres.py
+# Seed demo users & orgs
+python app/seed.py
 
-# Default Credentials (created by seed script):
-# Role: Admin
-# Email: admin@example.com
-# Password: admin123
+# Seed the SEYON workflow (run once — prints the workflow ID)
+python app/seyon_seed.py
 
 # Start the API server
 uvicorn app.main:app --reload
 ```
-*The API will be live at `http://localhost:8000`*
+> API: `http://localhost:8000` · Swagger docs: `http://localhost:8000/docs`
 
-### 2. Frontend Setup (Web)
+### 2. Frontend
+
 ```powershell
-# Navigate to the Web folder
 cd apps/web
-
-# Install dependencies (Next.js, React Flow, Zustand, Tailwind)
 npm install
-
-# Start the development server
 npm run dev
 ```
-*   **Access UI:** `http://localhost:3000`
-*   **Note:** Ensure `NEXT_PUBLIC_API_URL` is set if you change the backend port.
+> App: `http://localhost:3000`  
+> SEYON Portal: `http://localhost:3000/seyon`
 
-### 3. On-Premises Setup (Zero External Calls)
+### 3. On-Premises Mode (Zero External AI Calls)
+
 ```powershell
-# Requires Docker Desktop with 16 GB RAM available
+# Requires Docker Desktop with 16 GB RAM
 docker compose -f infra/docker/docker-compose.onprem.yml up -d
-# First run: Ollama will pull llama3.2:3b (~2 GB) automatically
 ```
-*   Full guide: [`docs/runbooks/onprem-setup.md`](./docs/runbooks/onprem-setup.md)
-*   No `GROQ_API_KEY` needed — all AI is served locally by Ollama + BGE embeddings
+Full guide: [`docs/runbooks/onprem-setup.md`](./docs/runbooks/onprem-setup.md)
 
-### 4. Celery Beat Scheduler (for Scheduled Triggers)
+### 4. Celery Beat (for Scheduled Triggers)
+
 ```powershell
 cd apps/api
 celery -A app.core.celery_app.celery_app beat --loglevel=info
 ```
-*Needed if you use the `ScheduledTriggerBlock` in any deployed workflow.*
+
 ---
 
-## 🧪 Try These Prompts
+## 🧪 Try It — SEYON Demo Flow
 
-Switch to the **"Automate"** tab and try these natural language inputs:
+1. Log in → click **SEYON Portal** in the sidebar
+2. Go to **Intake** tab → drag a PDF file into the drop zone
+3. Click **🚀 Run AI Processing** → watch the 9-node pipeline run live
+4. Switch to **Vault** → select the run → see OCR text, drawing type, PO data
+5. Switch to **Dispatch** → review the AI's team leader recommendation → click **Confirm Assignment**
+6. Toggle **⚡ Show Canvas** on any tab to see the React Flow nervous system
 
-*   **Document Processing:** *"I want to classify PDFs and store them by job number."*
-*   **Human Approval:** *"Extract data from invoices, but send to a supervisor for approval if confidence is low."*
-*   **Mechanical Flow:** *"Analyze new mechanical drawings, find duplicates, and recommend a lead."*
-*   **HR Automation:** *"Filter resumes for technical skills and match candidates to interviewers."*
+**Or use the Automate tab (developer mode)** and type a natural language goal:
+- *"Classify PDFs and store them by job number"*
+- *"Analyze mechanical drawings, find duplicates, and recommend a team lead"*
+- *"Extract data from invoices, send to supervisor if confidence is low"*
+
 ---
 
 ## 📁 Project Structure
+
 ```text
 Workline-AI/
 ├── apps/
-│   ├── web/                # Next.js 14 Frontend
-│   └── api/                # FastAPI Backend Service
+│   ├── web/                    # Next.js 14 Frontend
+│   │   ├── app/seyon/          # SEYON Operations Portal (4-tab vertical skin)
+│   │   ├── app/automate/       # React Flow canvas (developer mode)
+│   │   ├── lib/seyon-config.ts # SEYON workflow ID + node ID constants
+│   │   └── lib/api.ts          # Typed API client (incl. SEYON helpers)
+│   └── api/                    # FastAPI Backend
+│       └── app/
+│           ├── seyon_seed.py   # One-time SEYON DAG seeder
+│           ├── core/tasks.py   # Workflow engine runner (with resumption)
+│           └── routers/        # All API endpoints
 ├── packages/
-│   ├── workflow-engine/    # DAG Execution Core Logic
-│   └── block-library/      # Industry-Specific AI Blocks
-└── infra/                  # Docker & Deployment Configs
+│   ├── workflow_engine/        # Topological DAG executor
+│   └── block_library/          # AI block implementations
+│       ├── generic/            # OCR, classify, store, notify…
+│       └── mechanical/         # drawing_classifier, po_extractor, duplicate_detector, team_leader_recommender
+└── infra/                      # Docker & deployment configs
 ```
 
 ---
 
-## 🛠️ Current Status (v0.4.0-alpha)
-- [x] Multi-tenant DB Foundation (Organisations, Users, Workflows)
-- [x] Alembic Migration System
-- [x] Backend Seeding & Idempotency
-- [x] Frontend Scaffolding (Next.js 14)
-- [x] Core Dependency Integration (React Flow, Zustand)
-- [x] Full Stack Docker-Compose (Postgres, Redis, MinIO)
-- [x] **Real LLM Graph Generation** — Groq `llama-3.3-70b-versatile` via `POST /plan` (J1)
-- [x] **Conversation History** — Persistent chat turns with `GET /conversations/{id}` (J1)
-- [x] **Canvas UI** — Undo/Redo, diff highlights, right-click menu, auto-layout (J2)
-- [x] **Chatbot Panel UI** — Reasoning accordion, file attach, conversation restore (J3)
-- [x] **Workflow Save/Deploy UI** — SaveModal, DeployModal, Rollback UI, Sidebar status badges (J4)
-- [x] **Scheduled Triggers** — Cron schedule via `PUT /workflows/{id}/schedule`, dynamic Celery beat, ScheduleConfigPanel UI (J8)
-- [x] On-Premises Mode — `WORKLINE_MODE=onprem` runs fully air-gapped with Ollama + BGE via `docker-compose.onprem.yml` (J9)
-- [/] Multi-Domain Block Library (In Progress)
-- [x] Multi-user RBAC & Organisations 
+## ✅ Build Status (v0.5.0 — SEYON Pivot)
+
+- [x] Multi-tenant DB (Organisations, Users, Workflows, RBAC)
+- [x] Alembic migration system
+- [x] Real LLM graph generation — Groq `llama-3.3-70b-versatile` (J1)
+- [x] Conversation history — Persistent multi-turn chat (J1)
+- [x] Canvas UI — Undo/Redo, diff highlights, auto-layout (J2)
+- [x] Chatbot Panel UI — Reasoning accordion, file attach (J3)
+- [x] Workflow Save/Deploy/Rollback UI (J4)
+- [x] Scheduled Triggers — Cron via Celery beat (J8)
+- [x] On-Premises air-gapped mode — Ollama + BGE (J9)
+- [x] Domain Pack system — install/uninstall per org (M9)
+- [x] CI/CD + Performance benchmarks (M10)
+- [x] UI Polish + Accessibility (M11)
+- [x] **SEYON Operations Portal** — Dashboard · Intake · Vault · Dispatch · Ghost Toggle
+- [x] **SEYON-Automation DAG** — 9-node pipeline seeded (ID=2) and live
+- [x] **Workflow Engine Resumption** — human_review pause/resume fully wired
+- [ ] MinIO real file storage (simulated via JSON payload for demo)
 
 ---
 
 ## 🔑 Login Credentials
 
-The following identities represent different roles and views across multiple isolated organizations.
-
 ### Organization 1
-*Has independent workflows and team data isolated from Org 2.*
-
-*   **Email:** `malarrajamani24@gmail.com`
-*   **Password:** `1234`
-*   **Role:** Admin (Full Access to create & run pipelines)
-
-*   **Email:** `memberj@example.com`
-*   **Password:** `admin123`
-*   **Role:** Admin (Full Access)
+| Email | Password | Role |
+|---|---|---|
+| `malarrajamani24@gmail.com` | `1234` | Admin |
+| `memberj@example.com` | `admin123` | Admin |
 
 ### Organization 2
-*Has independent testing workflows isolated from Org 1.*
-
-*   **Email:** `admin@workline.ai`
-*   **Password:** `admin123`
-*   **Role:** Admin (Full edit/configuration access)
-
-*   **Email:** `viewer@workline.ai`
-*   **Password:** `viewer123`
-*   **Role:** Viewer (Read-only observation access, cannot modify nodes)
+| Email | Password | Role |
+|---|---|---|
+| `admin@workline.ai` | `admin123` | Admin |
+| `viewer@workline.ai` | `viewer123` | Viewer (read-only) |

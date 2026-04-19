@@ -15,6 +15,7 @@ import {
     Settings,
     Moon,
     Sun,
+    Cpu,
 } from 'lucide-react';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useChatStore } from '@/stores/chatStore';
@@ -171,10 +172,43 @@ export default function Sidebar() {
 
             {/* ── Nav ── */}
             <nav style={{ padding: '12px 8px', flex: 1, overflowY: 'auto' }}>
+
+                {/* ── SEYON Portal (primary entry) ── */}
+                <div style={{ marginBottom: 16 }}>
+                    {!sidebarCollapsed && (
+                        <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 12px', marginBottom: 6 }}>
+                            SEYON AI
+                        </p>
+                    )}
+                    <Link
+                        href="/seyon"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: sidebarCollapsed ? '10px 0' : '10px 12px',
+                            justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+                            borderRadius: 'var(--radius-sm)',
+                            color: pathname === '/seyon' ? 'white' : 'var(--text-secondary)',
+                            background: pathname === '/seyon' ? 'var(--gradient-primary)' : 'rgba(99,102,241,0.08)',
+                            border: '1px solid rgba(99,102,241,0.2)',
+                            textDecoration: 'none',
+                            fontSize: 13,
+                            fontWeight: 700,
+                            transition: 'all 0.15s ease',
+                            marginBottom: 2,
+                        }}
+                        title={sidebarCollapsed ? 'SEYON Operations Portal' : undefined}
+                    >
+                        <Cpu size={18} style={{ flexShrink: 0 }} />
+                        {!sidebarCollapsed && 'SEYON Portal'}
+                    </Link>
+                </div>
+
                 <div style={{ marginBottom: 8 }}>
                     {!sidebarCollapsed && (
                         <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 12px', marginBottom: 6 }}>
-                            Navigation
+                            Developer
                         </p>
                     )}
                     {NAV_ITEMS.map((item) => {
