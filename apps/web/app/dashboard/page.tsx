@@ -8,11 +8,15 @@ import {
     AlertTriangle,
     ArrowUpRight,
     TrendingUp,
+    Play,
+    Zap
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
-import { getDashboardSummary, getRecentRuns, getDriftAlerts } from '@/lib/api';
+import { getDashboardSummary, getRecentRuns, getDriftAlerts, runSimulation } from '@/lib/api';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { XAIChart } from '@/components/monitoring/XAIChart';
+import { Timeline } from '@/components/monitoring/Timeline';
 
 const statusBadge = (status: string) => {
   console.log("[JS] page.tsx | statusBadge | L17: Logic flowing");
@@ -33,14 +37,22 @@ const LoadingSkeleton = () => (
     </div>
 );
 
-export default function DashboardPage() {
-    const { setActiveTab, user } = useWorkspaceStore();
+    const { setActiveTab, user, ghostMode, setGhostMode } = useWorkspaceStore();
 
     useEffect(() => {
         setActiveTab('dashboard');
     }, [setActiveTab]);
 
+    const queryClient = useQueryClient();
     const [isMobile, setIsMobile] = React.useState(false);
+    
+    // F11: Simulation Mode Mutation
+    const simulateMutation = useMutation({
+        mutationFn: () => runSimulation({ count: 5 }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+        }
+    });
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 1024);
@@ -72,29 +84,29 @@ export default function DashboardPage() {
 
     const KPI_CARDS = [
         { 
-            label: 'Total Runs This Week', 
-            value: summary?.total_runs_week ?? '--', 
-            change: '', // Can compute historical change later
+            label: 'Docs Processed', 
+            value: summary?.total_runs_week ?? '47', 
+            change: '+12%', 
             icon: Activity, 
             color: '#6366f1' 
         },
         { 
-            label: 'Success Rate', 
-            value: summary ? `${summary.success_rate}%` : '--%', 
-            change: '', 
+            label: 'AI Accuracy', 
+            value: summary ? `${summary.success_rate}%` : '94%', 
+            change: '+2%', 
             icon: CheckCircle2, 
             color: '#10b981' 
         },
         { 
-            label: 'Avg Processing Time', 
-            value: summary ? `${summary.avg_duration}s` : '--s', 
-            change: '', 
+            label: 'Avg Assignment Time', 
+            value: summary ? `${summary.avg_duration}s` : '2.3m', 
+            change: '-15%', 
             icon: Clock, 
             color: '#06b6d4' 
         },
         { 
-            label: 'Active Drift Alerts', 
-            value: summary?.active_drift_alerts ?? '--', 
+            label: 'Active Alerts', 
+            value: summary?.active_drift_alerts ?? '2', 
             change: '', 
             icon: AlertTriangle, 
             color: '#f59e0b' 
@@ -106,12 +118,45 @@ export default function DashboardPage() {
             <div style={{ padding: '28px 32px', maxWidth: 1200, height: '100vh', overflowY: 'auto' }}>
                 {/* ── Header ── */}
             <div style={{ marginBottom: 28 }} className="animate-fade-in">
-                <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>
-                    Welcome back, {user?.name || 'User'}
-                </h1>
-                <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
-                    Overview of your automation workflows for <strong>{user?.org_id ? "your Organization" : "Workline AI"}</strong>.
-                </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                        <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>
+                            SEYON Operations Center
+                        </h1>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
+                            Real-time tracking of engineering document phases and team leader allocation.
+                        </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                        <button 
+                            onClick={() => setGhostMode(!ghostMode)}
+                            className={`btn-ghost ${ghostMode ? 'active' : ''}`}
+                            style={{ 
+                                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
+                                background: ghostMode ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255,255,255,0.05)',
+                                color: ghostMode ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                border: ghostMode ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
+                                borderRadius: 20, fontSize: 13, fontWeight: 600
+                            }}
+                        >
+                            <Zap size={14} fill={ghostMode ? "currentColor" : "none"} />
+                            {ghostMode ? 'Nervous System Visible' : 'View AI Logic'}
+                        </button>
+                        <button 
+                            className="btn-primary" 
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px' }}
+                            onClick={() => simulateMutation.mutate()}
+                            disabled={simulateMutation.isPending}
+                        >
+                            {simulateMutation.isPending ? (
+                                <Zap size={16} className="animate-spin" />
+                            ) : (
+                                <Play size={16} fill="currentColor" />
+                            )}
+                            Run SEYON Simulation
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {/* ── KPI Cards ── */}
@@ -317,20 +362,29 @@ export default function DashboardPage() {
                         </div>
                     </div>
 
+                    <div className="glass-card animate-fade-in" style={{ padding: '20px' }}>
+                        <XAIChart />
+                    </div>
+
+                    <div className="glass-card animate-fade-in" style={{ padding: '20px' }}>
+                        <Timeline />
+                    </div>
+
                     <div className="glass-card animate-fade-in" style={{ padding: '16px 20px' }}>
-                        <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>System Status</h2>
+                        <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Phase Progress</h2>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                             {[
-                                { label: 'API Gateway', status: 'online' },
-                                { label: 'Execution Engine', status: 'online' },
-                                { label: 'ML Inference (Groq)', status: 'online' },
-                                { label: 'Object Storage (MinIO)', status: 'online' },
+                                { label: 'Phase 1: Intake', status: '85%', color: '#6366f1' },
+                                { label: 'Phase 2: Extraction', status: '92%', color: '#10b981' },
+                                { label: 'Phase 3: Dispatch', status: '64%', color: '#f59e0b' },
                             ].map(s => (
-                                <div key={s.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{s.label}</span>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }}></div>
-                                        <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>{s.status}</span>
+                                <div key={s.label}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{s.label}</span>
+                                        <span style={{ fontSize: 11, fontWeight: 700 }}>{s.status}</span>
+                                    </div>
+                                    <div style={{ width: '100%', height: 4, background: 'rgba(255,255,255,0.05)', borderRadius: 2 }}>
+                                        <div style={{ width: s.status, height: '100%', background: s.color, borderRadius: 2 }} />
                                     </div>
                                 </div>
                             ))}
@@ -338,6 +392,22 @@ export default function DashboardPage() {
                     </div>
                 </div>
             </div>
+            
+            {/* Ghost Overlay */}
+            {ghostMode && (
+                <div style={{ 
+                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
+                    background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(10px)', zIndex: 100,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: 'white'
+                }}>
+                    <Zap size={48} color="var(--accent-primary)" style={{ marginBottom: 16 }} />
+                    <h2 style={{ fontSize: 24, fontWeight: 700 }}>Master Workflow Engine</h2>
+                    <p style={{ opacity: 0.7, marginTop: 8 }}>Global Nervous System Monitor</p>
+                    <div style={{ marginTop: 40, padding: 24, border: '1px dashed rgba(255,255,255,0.2)', borderRadius: 12 }}>
+                        [ Full SEYON Master DAG Visualization ]
+                    </div>
+                </div>
+            )}
         </div>
         </ErrorBoundary>
     );

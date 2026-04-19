@@ -6,19 +6,23 @@ This document maps the current state of WorkLine AI against the 13 required core
 
 | ID | Feature | Status | Technology (Requested) | Current Impl. |
 | :--- | :--- | :--- | :--- | :--- |
-| **F1** | Smart PO Processing | 🟡 Partial | pytesseract, spaCy | LLM-based (Groq) |
-| **F2** | Doc Classification | 🟡 Partial | Tfidf, RandomForest | LLM-based (Groq) |
-| **F3** | Engineer Allocation | 🟡 Partial | Cosine Similarity | Mock (Random) |
-| **F4** | Task Allocation | 🟡 Partial | Rule-based templates | Mock (Random) |
-| **F5** | Delay Prediction | 🔴 Missing | RandomForest/Logistic | None |
-| **F6** | Workflow Execution | 🟢 Ready | UI: running/comp, output | Statuses partially UI-linked |
-| **F7** | AI Generator | 🟢 Ready | Restrict blocks, Validate | Groq (Planner.py) |
-| **F8** | XAI Dashboard | 🔴 Missing | feature_importances_ | None |
-| **F9** | Auto Organizer | 🔴 Missing | move files based on class | None |
-| **F10** | Smart Alerts | 🔴 Missing | trigger from delay | None |
-| **F11** | Simulation Mode | 🔴 Missing | Synthetic data + Demo btn | None |
-| **F12** | Timeline View | 🟡 Partial | DB logs display | Schema exists, UI needs work |
-| **F13** | Feedback Learning | 🔴 Missing | AI vs Human mapping | None |
+| ID | Feature | Status | Tab (SEYON Portal) | Real AI Implementation |
+| :--- | :--- | :--- | :--- | :--- |
+| **F1** | Smart PO Processing | 🟢 Done | **Intake** | Regex + spaCy NER (Mechanical Block) |
+| **F2** | Doc Classification | 🟢 Done | **Intake** | RandomForest (MLService) |
+| **F3** | Engineer Allocation | 🟢 Done | **Dispatch** | Cosine Similarity (MLService) |
+| **F4** | Task Allocation | 🟢 Done | **Dispatch** | Rule-based templates (Block Library) |
+| **F5** | Delay Prediction | 🟢 Done | **Dashboard** | RandomForest Risk Model |
+| **F6** | Workflow Execution | 🟢 Ready | **Ghost Mode** | WebSocket + Real-time Canvas |
+| **F7** | AI Generator | 🟢 Done | **Ghost Mode** | Registry-Aware Planner + Chat |
+| **F8** | XAI Dashboard | 🟢 Done | **Dashboard** | Recharts XAI Chart Component |
+| **F9** | Auto Organizer | 🟢 Done | **Vault** | Structured S3 Pattern (StoreBlock) |
+| **F10** | Smart Alerts | 🟡 Partial | **Dashboard** | Backend Ready, UI Toast Next |
+| **F11** | Simulation Mode | 🟢 Done | **Dashboard** | "Run Simulation" SEYON Scenarios |
+| **F12** | Timeline View | 🟢 Done | **Dashboard** | Timeline Component (Run Logs) |
+| **F13** | Feedback Learning | 🔴 Missing | **Dispatch** | Human-in-the-loop override |
+| **F14** | Bending Simulation | 🔴 Pending | **Bending** | Physics-based bending estimation |
+| **F15** | Production Queue | 🔴 Pending | **Bending** | Real-time machine status tracking |
 
 ---
 

@@ -15,3 +15,12 @@ groq
 python-dotenv
 alembic
 croniter
+scikit-learn
+spacy
+pytesseract
+pdf2image
+pandas
+numpy
+xgboost
+matplotlib
+seaborn

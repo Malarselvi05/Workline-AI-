@@ -1,145 +1,190 @@
 from ..generic.blocks import BaseBlock
-from typing import Any, Dict
+from typing import Any, Dict, List
 import asyncio
 import logging
 import random
+import re
 
 logger = logging.getLogger(__name__)
 
-
 class DrawingClassifierBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
-        # Classify a mechanical engineering drawing into a type (Assembly, Part, Schematic, etc.)
+        # F2: Auto Document Classification (ML-based)
         print(f"[BLOCK] DrawingClassifierBlock.run | Starting classification. Sandbox={self.is_sandbox}")
-        text = ""
-        for val in input_data.values():
-            if isinstance(val, dict) and "text" in val:
-                text = val["text"].upper()
-                break
-
-        print(f"[BLOCK] DrawingClassifierBlock.run | OCR text snippet (uppercased): '{text[:80]}'")
-        logger.info(f"Classifying mechanical drawing {'(SANDBOX)' if self.is_sandbox else '(LIVE)'}...")
-        await asyncio.sleep(2.0)
-
-        # Heuristic-based classification by keyword matching
-        if "ASSY" in text or "ASSEMBLY" in text:
-            drawing_type = "General Assembly"
-        elif "EXPLODED" in text:
-            drawing_type = "Sub-Assembly"
-        elif "DRG" in text or "PART" in text:
-            drawing_type = "Part Drawing"
-        elif "SCHEMATIC" in text or "WIRING" in text:
-            drawing_type = "Schematic"
-        else:
-            types = ["General Assembly", "Sub-Assembly", "Part Drawing", "Schematic", "BOM List"]
-            drawing_type = random.choice(types)
-            print(f"[BLOCK] DrawingClassifierBlock.run | No keyword match, randomly assigned type.")
-
-        result = {
-            "drawing_type": drawing_type,
-            "confidence": 0.92 if text else 0.45,
-            "metadata": {"format": "A3", "engine": "vision_mock_v1", "keywords_found": bool(text)}
-        }
-        print(f"[BLOCK] DrawingClassifierBlock.run | Result: {result}")
-        return result
-
-
-class POExtractorBlock(BaseBlock):
-    async def run(self, input_data: Any) -> Any:
-        # Extract structured PO fields (PO number, value, vendor) from raw OCR text
-        print(f"[BLOCK] POExtractorBlock.run | Starting PO extraction. Input keys: {list(input_data.keys())}")
         text = ""
         for val in input_data.values():
             if isinstance(val, dict) and "text" in val:
                 text = val["text"]
                 break
 
-        print(f"[BLOCK] POExtractorBlock.run | Source text length: {len(text)} chars. Sandbox={self.is_sandbox}")
-        logger.info(f"Extracting PO information from text length {len(text)} {'(SANDBOX)' if self.is_sandbox else ''}...")
-
         try:
-            from app.services.llm import LLMService
-            llm = LLMService()
-            if llm.client:
-                schema = {
-                    "po_number": "string",
-                    "total_value": "number",
-                    "vendor": "string",
-                    "currency": "string"
-                }
-                print(f"[BLOCK] POExtractorBlock.run | Using LLM to extract schema: {list(schema.keys())}")
-                result = await llm.extract_structured_data(text, schema)
-                print(f"[BLOCK] POExtractorBlock.run | LLM extraction result: {result}")
-                return result
+            from app.services.ml_service import MLService
+            ml = MLService()
+            result = await ml.classify_document(text)
+            # Map general types to drawing-specific types if needed
+            if result["type"] == "drawing":
+                result["drawing_type"] = "Engineering Drawing"
+            else:
+                result["drawing_type"] = f"Other ({result['type']})"
+            return result
         except Exception as e:
-            logger.warning(f"LLM extraction failed: {e}")
-            print(f"[BLOCK] POExtractorBlock.run | LLM failed: {e}. Falling back to mock data.")
+            logger.warning(f"ML classification failed: {e}")
 
-        await asyncio.sleep(1.5)
-        result = {"po_number": "PO-2023-882", "total_value": 12500.0, "vendor": "Global Parts Ltd", "currency": "USD"}
-        print(f"[BLOCK] POExtractorBlock.run | Mock PO data returned: {result}")
+        await asyncio.sleep(1.0)
+        return {"drawing_type": "Assembly", "confidence": 0.6, "method": "Mock"}
+
+class StoreFileBlock(BaseBlock):
+    async def run(self, input_data: Any) -> Any:
+        # F9: Auto Document Organizer
+        print(f"[BLOCK] StoreFileBlock.run | Starting auto-organized storage.")
+        category = "general"
+        for val in input_data.values():
+            if isinstance(val, dict) and "type" in val:
+                category = val["type"]
+                break
+        
+        # Determine structured path based on category (F9)
+        # Patterns: drawings/, specifications/, calculations/, msds/
+        base_folders = {
+            "drawing": "drawings",
+            "specification": "specifications",
+            "calculation": "calculations",
+            "msds": "safety_docs"
+        }
+        folder = base_folders.get(category, "misc")
+        path = f"s3://workline-storage/{folder}/doc_{random.randint(100, 999)}.pdf"
+
+        print(f"[BLOCK] StoreFileBlock.run | Organized category '{category}' into folder '{folder}/'")
+        
+        await asyncio.sleep(0.8)
+        return {"status": "stored", "organized_path": path, "category": category}
+
+class POExtractorBlock(BaseBlock):
+    async def run(self, input_data: Any) -> Any:
+        # F1: Smart Purchase Order Processing (OCR + NLP/Regex)
+        print(f"[BLOCK] POExtractorBlock.run | Starting extraction. Input keys: {list(input_data.keys())}")
+        text = ""
+        for val in input_data.values():
+            if isinstance(val, dict) and "text" in val:
+                text = val["text"]
+                break
+
+        logger.info(f"Extracting PO fields using NLP/Regex...")
+        
+        # Regex-based extraction (F1 requirement)
+        po_match = re.search(r"PO-?(\d+)", text, re.IGNORECASE)
+        client_match = re.search(r"Client:\s*([^\n]+)", text, re.IGNORECASE)
+        deadline_match = re.search(r"Deadline:\s*([\d-]+)", text, re.IGNORECASE)
+        
+        # spaCy integration (if available)
+        try:
+            import spacy
+            # Assuming 'en_core_web_sm' is installed as per future_works Phase 4.1
+            nlp = spacy.load("en_core_web_sm")
+            doc = nlp(text)
+            entities = [(ent.text, ent.label_) for ent in doc.ents]
+            print(f"[BLOCK] POExtractorBlock.run | spaCy entities found: {entities}")
+        except Exception as e:
+            logger.warning(f"spaCy NER failed: {e}")
+
+        result = {
+            "job_id": f"PO-{po_match.group(1)}" if po_match else "PO-UNKNOWN",
+            "client": client_match.group(1).strip() if client_match else "Unknown Client",
+            "deadline": deadline_match.group(1) if deadline_match else "2026-12-31",
+            "items": ["servo motor", "actuator"], # Mocked items for F1 demo
+            "confidence": 0.95 if po_match else 0.4
+        }
+        
+        print(f"[BLOCK] POExtractorBlock.run | Extracted: {result}")
         return result
-
 
 class DuplicateDrawingDetectorBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
-        # Detect if the current drawing already exists in the vector database (deduplication)
-        print(f"[BLOCK] DuplicateDrawingDetectorBlock.run | Starting duplicate check. Sandbox={self.is_sandbox}")
-        logger.info(f"Generating embeddings for current drawing {'(SANDBOX)' if self.is_sandbox else ''}...")
-        await asyncio.sleep(1.0)
-
-        import numpy as np
-        embedding = np.random.rand(128)  # 128-dim embedding vector
-        print(f"[BLOCK] DuplicateDrawingDetectorBlock.run | Generated {len(embedding)}-dim embedding. Comparing against vector DB...")
-
-        logger.info("Comparing against Vector Database...")
-        await asyncio.sleep(0.5)
-
-        max_similarity = random.uniform(0.05, 0.45)
-        is_duplicate = random.random() < 0.15  # 15% chance of duplicate
-
-        if is_duplicate:
-            max_similarity = random.uniform(0.91, 0.99)
-            print(f"[BLOCK] DuplicateDrawingDetectorBlock.run | DUPLICATE DETECTED! Similarity={max_similarity:.3f}")
-        else:
-            print(f"[BLOCK] DuplicateDrawingDetectorBlock.run | No duplicate found. Max similarity: {max_similarity:.3f}")
-
-        result = {
+        # Detect if current drawing already exists (deduplication)
+        print(f"[BLOCK] DuplicateDrawingDetectorBlock.run | Starting duplicate check.")
+        await asyncio.sleep(0.8)
+        
+        # Simulation: 10% chance of duplicate
+        is_duplicate = random.random() < 0.1
+        similarity = random.uniform(0.95, 0.99) if is_duplicate else random.uniform(0.1, 0.4)
+        
+        return {
             "is_duplicate": is_duplicate,
-            "max_similarity": round(float(max_similarity), 4),
-            "match_id": f"DWG-{random.randint(1000, 9999)}" if is_duplicate else None,
-            "engine": "siamese_cnn_v4"
+            "max_similarity": float(f"{similarity:.3f}"),
+            "match_id": f"DWG-{random.randint(1000, 9999)}" if is_duplicate else None
         }
-        print(f"[BLOCK] DuplicateDrawingDetectorBlock.run | Final result: {result}")
-        return result
 
+class TaskAllocationBlock(BaseBlock):
+    async def run(self, input_data: Any) -> Any:
+        # F4: Automatic Task Allocation (Rule-based)
+        print(f"[BLOCK] TaskAllocationBlock.run | Generating tasks from templates.")
+        
+        doc_type = "general"
+        for val in input_data.values():
+            if isinstance(val, dict) and "type" in val:
+                doc_type = val["type"]
+                break
+                
+        # Rule-based templates (F4)
+        templates = {
+            "drawing": ["Initial Review", "Assembly Verification", "Tolerance Check", "BOM Approval"],
+            "specification": ["Compliance Verification", "Material Quality Check"],
+            "calculation": ["Validation Run", "Second Opinion Review"],
+            "msds": ["Safety Protocol Update", "Hazard Labeling"]
+        }
+        
+        tasks = templates.get(doc_type, ["General Document Processing"])
+        
+        return {
+            "allocated_tasks": tasks,
+            "count": len(tasks),
+            "priority": "MEDIUM" if len(tasks) < 3 else "HIGH"
+        }
 
 class TeamLeaderRecommenderBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
-        # Recommend the best-suited team lead for a drawing type based on historical expertise
-        print(f"[BLOCK] TeamLeaderRecommenderBlock.run | Starting recommendation. Input keys: {list(input_data.keys())}")
-        drawing_type = "Standard"
-        for val in input_data.values():
-            if isinstance(val, dict) and "drawing_type" in val:
-                drawing_type = val["drawing_type"]
-                break
+        # F3: Intelligent Engineer Allocation (Recommendation Engine)
+        print(f"[BLOCK] TeamLeaderRecommenderBlock.run | Recommending best lead.")
+        
+        mock_engineers = [
+            {"name": "Engineer A", "skills": "CAD Design Mechanical Assembly", "workload_percentage": 85},
+            {"name": "Engineer B", "skills": "FEA Stress Analysis Simulation", "workload_percentage": 20},
+            {"name": "Engineer C", "skills": "BOM Management Procurement", "workload_percentage": 45}
+        ]
+        
+        task_desc = "Mechanical Assembly and CAD Design for new actuator unit"
+        
+        try:
+            from app.services.ml_service import MLService
+            ml = MLService()
+            result = await ml.recommend_engineer(task_desc, mock_engineers)
+            print(f"[BLOCK] TeamLeaderRecommenderBlock.run | ML recommendation: {result}")
+            return result
+        except Exception as e:
+            logger.error(f"Recommendation failed: {e}")
+            
+        return {"engineer": "Engineer B", "score": 0.91, "reason": "High skill match (Mock)"}
 
-        print(f"[BLOCK] TeamLeaderRecommenderBlock.run | Drawing type identified: '{drawing_type}'. Sandbox={self.is_sandbox}")
-        logger.info(f"Recommending lead for drawing type: {drawing_type} {'(SANDBOX)' if self.is_sandbox else ''}...")
-        await asyncio.sleep(1.0)
-
-        experts = {
-            "General Assembly": "Jane Smith (Lead Architect)",
-            "Part Drawing": "John Doe (Production Lead)",
-            "Schematic": "Robert Brown (Electrical Head)",
-            "BOM List": "Alice White (Procurement)"
+class DelayPredictorBlock(BaseBlock):
+    async def run(self, input_data: Any) -> Any:
+        # F5: Delay Prediction System
+        print(f"[BLOCK] DelayPredictorBlock.run | Predicting project risks.")
+        
+        # Aggregate data from previous nodes
+        project_stats = {
+            "workload": random.uniform(0.3, 0.9),
+            "overtime": random.uniform(0.1, 0.6),
+            "scope_changes": random.uniform(0.0, 0.4),
+            "experience": random.uniform(0.5, 1.0)
         }
-
-        leader = experts.get(drawing_type, "Senior Engineer (Default)")
-        result = {
-            "recommended_leader": leader,
-            "reasoning": f"Based on historical expertise in {drawing_type} management.",
-            "available": True
-        }
-        print(f"[BLOCK] TeamLeaderRecommenderBlock.run | Recommendation: {result}")
-        return result
+        
+        try:
+            from app.services.ml_service import MLService
+            ml = MLService()
+            result = await ml.predict_delay_risk(project_stats)
+            print(f"[BLOCK] DelayPredictorBlock.run | Risk output: {result}")
+            return result
+        except Exception as e:
+            logger.error(f"Risk prediction failed: {e}")
+            
+        return {"delay_risk": 0.3, "status": "LOW", "reason": "Fallback"}

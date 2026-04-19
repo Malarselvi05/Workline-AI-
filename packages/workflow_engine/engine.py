@@ -23,7 +23,8 @@ from block_library.src.mechanical.blocks import (
     DrawingClassifierBlock, 
     POExtractorBlock, 
     DuplicateDrawingDetectorBlock, 
-    TeamLeaderRecommenderBlock
+    TeamLeaderRecommenderBlock,
+    DelayPredictorBlock
 )
 
 class WorkflowEngine:
@@ -46,6 +47,7 @@ class WorkflowEngine:
         "po_extractor": POExtractorBlock,
         "duplicate_detector": DuplicateDrawingDetectorBlock,
         "team_leader_recommender": TeamLeaderRecommenderBlock,
+        "delay_predictor": DelayPredictorBlock,
         
         # --- Common AI-Generated Aliases ---
         "recommend": TeamLeaderRecommenderBlock,
@@ -62,7 +64,9 @@ class WorkflowEngine:
         "upload": StoreFileBlock,
         "read": OCRBlock,
         "format": TextCleanerBlock,
-        "validate": RouterBlock
+        "validate": RouterBlock,
+        "delay_prediction": DelayPredictorBlock,
+        "risk": DelayPredictorBlock
     }
 
     def __init__(

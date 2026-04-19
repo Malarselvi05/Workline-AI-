@@ -240,7 +240,7 @@ BLOCK_REGISTRY: Dict[str, BlockDefinition] = {
     "drawing_classifier": BlockDefinition(
         type="drawing_classifier", category=BlockCategory.MECHANICAL,
         label="Drawing Classifier", icon="Layers",
-        description="Classifies mechanical drawings by type using a CLIP vision model",
+        description="Classifies mechanical drawings using machine learning (F2)",
         input_types=["file"], output_type="json",
         config_fields=[
             BlockConfigField(name="classes", type="string", label="Drawing types (comma-separated)", required=True),
@@ -249,7 +249,7 @@ BLOCK_REGISTRY: Dict[str, BlockDefinition] = {
     "po_extractor": BlockDefinition(
         type="po_extractor", category=BlockCategory.MECHANICAL,
         label="PO Extractor", icon="FileSearch",
-        description="Extracts Purchase Order fields from engineering documents (PaddleOCR + LLM)",
+        description="Extracts Purchase Order fields (job_id, client, deadline) using NLP/Regex (F1)",
         input_types=["file", "text"], output_type="json",
     ),
     "duplicate_detector": BlockDefinition(

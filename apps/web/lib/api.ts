@@ -361,6 +361,13 @@ export async function getDriftAlerts(): Promise<DriftAlert[]> {
     return data.alerts;
 }
 
+export async function runSimulation(options: { count: number, type?: string }): Promise<any> {
+    return request('/api/dashboard/simulate', {
+        method: 'POST',
+        body: JSON.stringify(options)
+    });
+}
+
 // ── Scheduled Triggers ────────────────────────────────────────────────────
 
 export interface ScheduledTrigger {

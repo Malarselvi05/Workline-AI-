@@ -45,10 +45,11 @@ BLOCK_REGISTRY: Dict[str, Dict[str, str]] = {
     "dashboard_out":  {"category": "Output",    "label": "Dashboard Output",  "description": "Publishes a result to the dashboard summary view"},
     "export":         {"category": "Output",    "label": "Export",            "description": "Exports data as CSV, PDF, or JSON for download"},
     # Mechanical domain pack
-    "drawing_classifier":       {"category": "Mechanical", "label": "Drawing Classifier",         "description": "Classifies mechanical drawings by type using a vision model"},
-    "po_extractor":             {"category": "Mechanical", "label": "PO Extractor",               "description": "Extracts Purchase Order fields from engineering documents"},
-    "duplicate_detector":       {"category": "Mechanical", "label": "Duplicate Drawing Detector", "description": "Detects duplicate drawings using embedding cosine similarity"},
-    "team_leader_recommender":  {"category": "Mechanical", "label": "Team Leader Recommender",    "description": "Recommends the best team leader using an XGBoost model"},
+    "drawing_classifier":       {"category": "Mechanical", "label": "Drawing Classifier",         "description": "Classifies mechanical drawings by type (F2)"},
+    "po_extractor":             {"category": "Mechanical", "label": "PO Extractor",               "description": "Extracts Purchase Order fields (job_id, client, deadline) using NLP/Regex (F1)"},
+    "duplicate_detector":       {"category": "Mechanical", "label": "Duplicate Drawing Detector", "description": "Detects duplicate drawings using cosine similarity (F3)"},
+    "team_leader_recommender":  {"category": "Mechanical", "label": "Intelligent Engineer Allocation", "description": "Recommends best engineer based on skill similarity and workload (F3)"},
+    "delay_predictor":          {"category": "Mechanical", "label": "Delay Predictor",            "description": "Predicts project delay risk using RandomForest (F5)"},
 }
 
 WORKLINE_MODE = os.getenv("WORKLINE_MODE", "cloud").lower()  # "cloud" | "onprem"

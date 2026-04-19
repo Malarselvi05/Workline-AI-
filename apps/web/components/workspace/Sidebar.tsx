@@ -12,9 +12,12 @@ import {
     User as UserIcon,
     Package,
     LogOut,
-    Settings,
     Moon,
     Sun,
+    FileSearch,
+    Inbox,
+    UserCheck,
+    Hammer,
 } from 'lucide-react';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useChatStore } from '@/stores/chatStore';
@@ -23,7 +26,15 @@ import { useRouter } from 'next/navigation';
 
 const NAV_ITEMS = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
+    { id: 'intake', label: 'Intake', icon: Inbox, href: '/intake' },
+    { id: 'vault', label: 'Vault', icon: FileSearch, href: '/vault' },
+    { id: 'dispatch', label: 'Dispatch', icon: UserCheck, href: '/dispatch' },
+    { id: 'bending', label: 'Bending', icon: Hammer, href: '/bending' },
+];
+
+const DEV_ITEMS = [
     { id: 'automate', label: 'Automate', icon: Zap, href: '/automate' },
+    { id: 'packs', label: 'Domain Packs', icon: Package, href: '/packs' },
 ];
 
 export default function Sidebar() {
@@ -178,6 +189,42 @@ export default function Sidebar() {
                         </p>
                     )}
                     {NAV_ITEMS.map((item) => {
+                        const isActive = pathname === item.href;
+                        return (
+                            <Link
+                                key={item.id}
+                                href={item.href}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 10,
+                                    padding: sidebarCollapsed ? '10px 0' : '10px 12px',
+                                    justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+                                    borderRadius: 'var(--radius-sm)',
+                                    color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                    background: isActive ? 'rgba(99, 102, 241, 0.12)' : 'transparent',
+                                    textDecoration: 'none',
+                                    fontSize: 13,
+                                    fontWeight: isActive ? 600 : 500,
+                                    transition: 'all 0.15s ease',
+                                    marginBottom: 2,
+                                }}
+                                title={sidebarCollapsed ? item.label : undefined}
+                            >
+                                <item.icon size={18} style={{ flexShrink: 0 }} />
+                                {!sidebarCollapsed && item.label}
+                            </Link>
+                        );
+                    })}
+                </div>
+
+                <div style={{ marginTop: 24, marginBottom: 8 }}>
+                    {!sidebarCollapsed && (
+                        <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 12px', marginBottom: 6 }}>
+                            Dev Mode
+                        </p>
+                    )}
+                    {DEV_ITEMS.map((item) => {
                         const href = item.id === 'automate' ? getAutomateUrl() : item.href;
                         const isActive = pathname === item.href || (item.id === 'automate' && pathname === '/automate');
                         return (
@@ -198,6 +245,7 @@ export default function Sidebar() {
                                     fontWeight: isActive ? 600 : 500,
                                     transition: 'all 0.15s ease',
                                     marginBottom: 2,
+                                    opacity: 0.7
                                 }}
                                 title={sidebarCollapsed ? item.label : undefined}
                             >
@@ -319,34 +367,6 @@ export default function Sidebar() {
                     </div>
                 )}
 
-                {/* ── Domain Pack Manager link ── */}
-                <div style={{ marginTop: 16 }}>
-                    {!sidebarCollapsed && (
-                        <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 12px', marginBottom: 6 }}>
-                            Extensions
-                        </p>
-                    )}
-                    <Link
-                        href="/packs"
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 10,
-                            padding: sidebarCollapsed ? '10px 0' : '10px 12px',
-                            justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
-                            borderRadius: 'var(--radius-sm)',
-                            color: 'var(--text-secondary)',
-                            background: 'transparent',
-                            textDecoration: 'none',
-                            fontSize: 13,
-                            fontWeight: 500,
-                            transition: 'all 0.15s ease',
-                        }}
-                        title={sidebarCollapsed ? 'Domain Pack Manager' : undefined}
-                    >
-                        <Package size={18} style={{ flexShrink: 0 }} />
-                        {!sidebarCollapsed && 'Domain Packs'}
-                    </Link>
                 </div>
             </nav>
 

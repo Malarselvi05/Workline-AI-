@@ -117,3 +117,28 @@ def get_drift_alerts(
         ))
         
     return DashboardDriftAlerts(alerts=result)
+
+@router.post("/simulate")
+async def run_demo_simulation(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    F11: Simulation Mode (Run Demo)
+    Seeds the database with synthetic workflow runs and documents.
+    """
+    from app.services.ml_service import MLService
+    ml = MLService()
+    
+    # 1. Generate synthetic data
+    demo_docs = await ml.generate_synthetic_demo_data()
+    
+    # 2. Seed a mock workflow run if none exists, or just simulate activity
+    # For now, we'll return the generated data to the frontend to show off.
+    # In a full impl, we'd add WorkflowRun and RunNodeState records.
+    return {
+        "status": "success",
+        "message": "Demo simulation seeded synthetic data.",
+        "data_count": len(demo_docs),
+        "docs": demo_docs
+    }

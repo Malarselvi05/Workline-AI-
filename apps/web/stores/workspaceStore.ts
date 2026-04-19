@@ -5,13 +5,15 @@ interface WorkspaceState {
     user: User | null;
     workflows: Workflow[];
     activeWorkflowId: number | null;
-    activeTab: 'dashboard' | 'automate' | 'workflow';
+    activeTab: 'dashboard' | 'automate' | 'workflow' | 'intake' | 'vault' | 'dispatch' | 'bending';
+    ghostMode: boolean;
     sidebarCollapsed: boolean;
     loading: boolean;
 
     setUser: (user: User | null) => void;
     fetchUser: () => Promise<void>;
-    setActiveTab: (tab: 'dashboard' | 'automate' | 'workflow') => void;
+    setActiveTab: (tab: 'dashboard' | 'automate' | 'workflow' | 'intake' | 'vault' | 'dispatch' | 'bending') => void;
+    setGhostMode: (active: boolean) => void;
     setActiveWorkflow: (id: number | null) => void;
     addWorkflow: (workflow: Workflow) => void;
     addWorkflowTab: (workflow: Workflow) => void;
@@ -29,9 +31,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     workflows: [],
     activeWorkflowId: null,
     activeTab: 'dashboard',
+    ghostMode: false,
     sidebarCollapsed: false,
-    loading: false,
-    installedPacks: [],
 
     setUser: (user) => set({ user }),
 
@@ -45,6 +46,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     },
 
     setActiveTab: (tab) => set({ activeTab: tab }),
+
+    setGhostMode: (active) => set({ ghostMode: active }),
 
     setActiveWorkflow: (id) => set({ activeWorkflowId: id, activeTab: 'workflow' }),
 
