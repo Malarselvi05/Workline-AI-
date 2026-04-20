@@ -37,6 +37,7 @@ const LoadingSkeleton = () => (
     </div>
 );
 
+export default function DashboardPage() {
     const { setActiveTab, user, ghostMode, setGhostMode } = useWorkspaceStore();
 
     useEffect(() => {

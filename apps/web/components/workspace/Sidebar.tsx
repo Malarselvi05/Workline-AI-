@@ -19,6 +19,7 @@ import {
     UserCheck,
     Hammer,
     Cpu,
+    Settings,
 } from 'lucide-react';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useChatStore } from '@/stores/chatStore';
@@ -127,7 +128,6 @@ export default function Sidebar() {
     }, []);
 
     const statusColor = (status: string) => {
-      console.log("[JS] Sidebar.tsx | statusColor | L113: Data processing");
         if (status === 'active') return '#10b981';
         if (status === 'archived') return '#6b7280';
         return '#f59e0b'; // draft
@@ -370,8 +370,6 @@ export default function Sidebar() {
                         </div>
                     </div>
                 )}
-
-                </div>
             </nav>
 
             {/* ── Bottom ── */}

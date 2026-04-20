@@ -5,7 +5,7 @@
  */
 
 // ── Update this after running seyon_seed.py ──────────────────────────────────
-export const SEYON_WORKFLOW_ID = 2;
+export const SEYON_WORKFLOW_ID = 3;
 
 // Node IDs that match seyon_seed.py
 export const SEYON_NODE_IDS = {

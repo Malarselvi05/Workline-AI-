@@ -52,21 +52,40 @@ EDGES = [
 def seed():
     db = SessionLocal()
     try:
-        # Check if already exists
+        # Find the specific user and their org
+        user = db.query(models.User).filter(models.User.email == "malarrajamani24@gmail.com").first()
+        if not user:
+            user = db.query(models.User).filter(models.User.role == "admin").first()
+            
+        org_id = user.org_id if user else 1
+
+        # Check if already exists for THIS org
         existing = db.query(models.Workflow).filter(
-            models.Workflow.name == SEYON_WORKFLOW_NAME
+            models.Workflow.name == SEYON_WORKFLOW_NAME,
+            models.Workflow.org_id == org_id
         ).first()
+
         if existing:
-            print(f"[SEYON SEED] Workflow already exists with ID={existing.id}")
-            print(f"\n✅ Update seyon-config.ts: SEYON_WORKFLOW_ID = {existing.id}")
-            print(f"   HUMAN_REVIEW_NODE_ID = 's_human_review'")
+            print(f"[SEYON SEED] Workflow already exists for Org {org_id} with ID={existing.id}")
             return existing.id
 
-        # Find first org/user for seeding
-        org = db.query(models.Organisation).first()
-        user = db.query(models.User).filter(models.User.role == "admin").first()
-        if not org or not user:
-            print("[SEYON SEED] ERROR: No org/admin user found. Run the main seed.py first.")
+        # If it exists for a different org, we keep it but create a new one for this org
+
+        # Find the specific user and their org
+        user = db.query(models.User).filter(models.User.email == "malarrajamani24@gmail.com").first()
+        if not user:
+            user = db.query(models.User).filter(models.User.role == "admin").first()
+            
+        if not user:
+            print("[SEYON SEED] ERROR: No admin user found. Run the main seed.py first.")
+            return None
+            
+        org = db.query(models.Organisation).filter(models.Organisation.id == user.org_id).first()
+        if not org:
+            org = db.query(models.Organisation).first()
+            
+        if not org:
+            print("[SEYON SEED] ERROR: No org found.")
             return None
 
         # Create workflow
@@ -110,8 +129,8 @@ def seed():
 
         db.commit()
         db.refresh(wf)
-        print(f"[SEYON SEED] ✅ Created SEYON workflow with ID={wf.id}")
-        print(f"\n🎯 Update apps/web/lib/seyon-config.ts:")
+        print(f"[SEYON SEED] Created SEYON workflow with ID={wf.id}")
+        print(f"\nUpdate apps/web/lib/seyon-config.ts:")
         print(f"   export const SEYON_WORKFLOW_ID = {wf.id};")
         print(f"   export const HUMAN_REVIEW_NODE_ID = 's_human_review';")
         return wf.id
