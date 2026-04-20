@@ -166,6 +166,8 @@ async def run_workflow_async(workflow_id: int, initial_input: Dict[str, Any] = N
         results = results_data["outputs"]
         final_status = results_data["status"]
         print(f"[WORKFLOW_DEBUG] ENGINE_COMPLETE: FinalStatus={final_status}")
+        print(f"[WORKFLOW_DEBUG] PO_EXTRACT_RESULT: {results.get('s_po_extract', 'NOT FOUND')}")
+        print(f"[WORKFLOW_DEBUG] ALL_RESULT_KEYS: {list(results.keys())}")
         
         if final_status == "awaiting_review":
             run.status = "awaiting_review"

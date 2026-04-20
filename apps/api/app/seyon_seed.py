@@ -66,8 +66,9 @@ def seed():
         ).first()
 
         if existing:
-            print(f"[SEYON SEED] Workflow already exists for Org {org_id} with ID={existing.id}")
-            return existing.id
+            print(f"[SEYON SEED] Removing existing workflow {existing.id} to ensure fresh sync...")
+            db.delete(existing)
+            db.commit()
 
         # If it exists for a different org, we keep it but create a new one for this org
 

@@ -81,12 +81,16 @@ export default function IntakePage() {
             }
             
             const data = await res.json();
-            console.log("[INTAKE] Workflow result:", data);
+            console.log("--- SEYON AI RESULT ---", data);
             
             const results = data.results || {};
             const ocr = results.s_ocr || {};
             const po = results.s_po_extract || {};
             const cls = results.s_classify || {};
+
+            // Aggressive price search
+            const finalPrice = po.total_amount ?? po.total_value ?? po.price ?? po.total ?? "N/A";
+            const displayPrice = (finalPrice !== "N/A") ? `$${finalPrice}` : "N/A";
 
             setResult({
                 id: `RUN-${data.run_id || data.id || '001'}`,
@@ -95,7 +99,7 @@ export default function IntakePage() {
                 extracted: {
                     po_number: po.po_number || "PO-2026-SEYON-001",
                     client: po.vendor || "Precision Dynamics Corp",
-                    total: (po.total_amount !== undefined && po.total_amount !== null) ? `$${po.total_amount}` : "N/A",
+                    total: displayPrice,
                     items: po.items || ["Titanium Gear Shafts", "High-Temp Ball Bearings"]
                 }
             });

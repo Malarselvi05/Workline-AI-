@@ -135,6 +135,8 @@ class POExtractorBlock(BaseBlock):
                     "po_number": data.get("po_number", "PO-UNKNOWN"),
                     "vendor": data.get("vendor", "Unknown"),
                     "total_amount": total_amount,
+                    "total_value": total_amount,
+                    "price": total_amount,
                     "items": data.get("items", []),
                     "confidence": 0.98,
                     "engine": "groq_llm"
