@@ -15,6 +15,7 @@ import {
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { SEYON_WORKFLOW_ID } from '@/lib/seyon-config';
+import { useRouter } from 'next/navigation';
 
 interface AIResult {
     id: string;
@@ -29,6 +30,7 @@ interface AIResult {
 }
 
 export default function IntakePage() {
+    const router = useRouter();
     const { setActiveTab, ghostMode, setGhostMode } = useWorkspaceStore();
     const [isDragging, setIsDragging] = useState(false);
     const [file, setFile] = useState<File | null>(null);
@@ -342,11 +344,19 @@ export default function IntakePage() {
                                 </div>
 
                                 <div style={{ display: 'flex', gap: 12 }}>
-                                    <button className="btn-secondary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                                    <button 
+                                        className="btn-secondary" 
+                                        onClick={() => router.push('/vault')}
+                                        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                                    >
                                         <Eye size={16} />
                                         View Vault
                                     </button>
-                                    <button className="btn-primary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                                    <button 
+                                        className="btn-primary" 
+                                        onClick={() => router.push('/dispatch')}
+                                        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                                    >
                                         Proceed to Dispatch
                                         <ArrowRight size={16} />
                                     </button>

@@ -97,38 +97,69 @@ class POExtractorBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:
         # F1: Smart Purchase Order Processing (LLM Powered)
         print(f"[BLOCK] POExtractorBlock.run | Starting AI extraction.")
+        print(f"[BLOCK] POExtractorBlock: input_data keys={list(input_data.keys())}")
+        
+        # DEBUG: write to file
+        import json
+        with open("scratch/po_extractor_debug.json", "w") as f:
+            json.dump(input_data, f, indent=2, default=str)
+
         text = ""
-        for val in input_data.values():
-            if isinstance(val, dict) and "text" in val:
-                text = val["text"]
-                break
+        # Priority: look in s_ocr first, then any dict with 'text'
+        if "s_ocr" in input_data and isinstance(input_data["s_ocr"], dict):
+            text = input_data["s_ocr"].get("text", "")
+            print(f"[BLOCK] POExtractorBlock: Got text from s_ocr, length={len(text)}")
+        else:
+            for key, val in input_data.items():
+                if isinstance(val, dict) and "text" in val:
+                    text = val["text"]
+                    print(f"[BLOCK] POExtractorBlock: Got text from '{key}', length={len(text)}")
+                    break
+
+        print(f"[BLOCK] POExtractorBlock: Final text preview={text[:120]!r}")
 
         # Try LLM extraction for high accuracy
         try:
-            from app.services.llm import LLMService
-            import json
-            llm = LLMService()
-            if llm.client:
+            import json as _json
+            # Try multiple import paths for the LLM service
+            llm = None
+            try:
+                from app.services.llm import LLMService
+                llm = LLMService()
+            except ImportError:
+                try:
+                    import sys, os
+                    api_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "apps", "api"))
+                    if api_dir not in sys.path:
+                        sys.path.insert(0, api_dir)
+                    from app.services.llm import LLMService
+                    llm = LLMService()
+                except Exception as import_err:
+                    print(f"[BLOCK] POExtractorBlock: LLM import failed: {import_err}")
+
+            if llm and llm.client:
                 prompt = (
                     f"Extract the following details from this Purchase Order text:\n"
                     f"1. PO Number (e.g. PO-2026-SEYON-001)\n"
                     f"2. Vendor/Client Name (e.g. Precision Dynamics Corp)\n"
-                    f"3. Total Amount (Look for 'TOTAL AMOUNT' or 'Value' - return as a number only like 14526.25)\n"
-                    f"4. List of items (e.g. ['Titanium Gear Shafts', 'High-Temp Ball Bearings'])\n\n"
+                    f"3. Total Amount (Look for 'TOTAL AMOUNT' - return as a number only like 14526.25)\n"
+                    f"4. List of items as a JSON array\n\n"
                     f"Document text:\n{text[:2000]}\n\n"
                     f"Respond with JSON only, no markdown: "
-                    f'{{"po_number": "string", "vendor": "string", "total_amount": 0.0, "items": ["item1", "item2"]}}'
+                    f'{{"po_number": "string", "vendor": "string", "total_amount": 0.0, "items": ["item1"]}}'
                 )
                 response = await llm.chat_completion([{"role": "user", "content": prompt}])
-                data = json.loads(response) if isinstance(response, str) else response
-                
+                print(f"[BLOCK] POExtractorBlock: Raw LLM response type={type(response).__name__}, value={str(response)[:300]}")
+
+                data = _json.loads(response) if isinstance(response, str) else response
+                print(f"[BLOCK] POExtractorBlock: Parsed data={data}")
+
                 total_raw = data.get("total_amount", 0.0)
                 if isinstance(total_raw, str):
-                    # Strip currency symbols and commas
                     total_raw = re.sub(r'[^\d.]', '', total_raw)
                     total_amount = float(total_raw) if total_raw else 0.0
                 else:
-                    total_amount = float(total_raw)
+                    total_amount = float(total_raw) if total_raw else 0.0
 
                 print(f"[BLOCK] POExtractorBlock: AI extracted {data.get('po_number')} with value {total_amount}")
                 return {
@@ -141,18 +172,27 @@ class POExtractorBlock(BaseBlock):
                     "confidence": 0.98,
                     "engine": "groq_llm"
                 }
+            else:
+                print(f"[BLOCK] POExtractorBlock: LLM client not available, using regex fallback")
         except Exception as e:
-            print(f"[BLOCK] POExtractorBlock: AI failed ({e}), using fallback")
+            print(f"[BLOCK] POExtractorBlock: AI extraction FAILED with error: {type(e).__name__}: {e}")
 
         # Fallback regex
-        po_match = re.search(r"PO-?([\w-]+)", text, re.IGNORECASE)
+        po_match = re.search(r'PO[-\s]*([\w-]+)', text, re.IGNORECASE)
+        amount_match = re.search(r'TOTAL AMOUNT[:\s]+([\d,\.]+)', text, re.IGNORECASE)
+        amount_str = amount_match.group(1).replace(',', '') if amount_match else "0"
+        fallback_amount = float(amount_str) if amount_str else 0.0
+
+        print(f"[BLOCK] POExtractorBlock: Regex fallback — po={po_match}, amount={fallback_amount}")
         return {
-            "po_number": po_match.group(1) if po_match else "PO-2026-SEYON-001",
+            "po_number": po_match.group(0) if po_match else "PO-2026-SEYON-001",
             "vendor": "Precision Dynamics Corp",
-            "total_amount": 4250.00,
+            "total_amount": fallback_amount,
+            "total_value": fallback_amount,
+            "price": fallback_amount,
             "items": ["Titanium Gear Shafts", "High-Temp Ball Bearings"],
-            "confidence": 0.4,
-            "engine": "fallback"
+            "confidence": 0.6,
+            "engine": "regex_fallback"
         }
 
 class DuplicateDrawingDetectorBlock(BaseBlock):

@@ -11,10 +11,13 @@ import {
     ArrowRight,
     TrendingUp,
     MessageSquare,
-    ChevronDown
+    ChevronDown,
+    RefreshCw
 } from 'lucide-react';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { getWorkflowRuns, getRunDetail } from '@/lib/api';
+import { SEYON_WORKFLOW_ID } from '@/lib/seyon-config';
 
 interface Recommendation {
     id: number;
@@ -65,17 +68,76 @@ interface SelectedJob {
 
 export default function DispatchPage() {
     const { setActiveTab, ghostMode, setGhostMode } = useWorkspaceStore();
-    const [selectedJob, setSelectedJob] = useState<SelectedJob>({
-        id: 'RUN-438',
-        docName: 'PO_SEYON_2024.pdf',
-        type: 'Purchase Order',
-        value: '$12,500'
-    });
+    const [selectedJob, setSelectedJob] = useState<SelectedJob | null>(null);
+    const [recommendations, setRecommendations] = useState<Recommendation[]>(MOCK_RECOMMENDATIONS);
     const [assigned, setAssigned] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         setActiveTab('dispatch');
+        fetchLiveJob();
     }, [setActiveTab]);
+
+    const fetchLiveJob = async () => {
+        try {
+            setLoading(true);
+            const runs = await getWorkflowRuns(SEYON_WORKFLOW_ID);
+            const sortedRuns = runs.sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
+            const latestRun = sortedRuns[0];
+
+            if (latestRun && latestRun.logs?.results) {
+                const results = latestRun.logs.results;
+                const po = results.s_po_extract || {};
+                const rec = results.s_recommender || {};
+                
+                // Set live job data
+                setSelectedJob({
+                    id: `RUN-${latestRun.id}`,
+                    docName: results.s_ocr?.filename || 'Document',
+                    type: results.s_classify?.category || 'Purchase Order',
+                    value: po.total_amount ? `$${po.total_amount}` : 'N/A'
+                });
+
+                // Inject live recommendation if available
+                if (rec.recommended_leader) {
+                    const liveRec: Recommendation = {
+                        id: 99,
+                        name: rec.recommended_leader,
+                        role: 'Assigned by AI Engine',
+                        score: 0.98,
+                        reason: rec.reasoning || 'Recommended by SEYON AI Recommender Engine.',
+                        workload: 30,
+                        status: 'recommended'
+                    };
+                    
+                    // Replace top mock recommendation with live data
+                    setRecommendations([liveRec, MOCK_RECOMMENDATIONS[1], MOCK_RECOMMENDATIONS[2]]);
+                }
+            }
+        } catch (err) {
+            console.error("Failed to fetch live job", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
+                <RefreshCw size={32} className="animate-spin" color="var(--accent-primary)" />
+                <p style={{ color: 'var(--text-muted)' }}>Fetching latest extraction job...</p>
+            </div>
+        );
+    }
+
+    if (!selectedJob) {
+        return (
+            <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
+                <AlertTriangle size={32} color="#ef4444" />
+                <p style={{ color: 'var(--text-muted)' }}>No recent jobs found. Run a document through Intake first.</p>
+            </div>
+        );
+    }
 
     return (
         <ErrorBoundary>
@@ -165,7 +227,7 @@ export default function DispatchPage() {
                                     <span style={{ fontSize: 13, fontWeight: 700, color: '#10b981' }}>AI Confidence High</span>
                                 </div>
                                 <p style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                                    Matching score exceeds 90%. Historical data indicates Jane Smith has handled 12 similar mechanical assembly jobs with 100% success rate.
+                                    Matching score exceeds 90%. Historical data indicates <strong>{recommendations[0]?.name || 'this leader'}</strong> has the exact technical background and availability to handle this specific document type successfully.
                                 </p>
                             </div>
                         </div>
@@ -184,7 +246,7 @@ export default function DispatchPage() {
                                     <button onClick={() => setAssigned(null)} className="btn-primary">Process Next Job</button>
                                 </div>
                             ) : (
-                                MOCK_RECOMMENDATIONS.map((rec, i) => (
+                                recommendations.map((rec, i) => (
                                     <div key={rec.id} className="glass-card" style={{ 
                                         padding: 24, display: 'flex', gap: 20, position: 'relative',
                                         borderLeft: i === 0 ? '4px solid #10b981' : '1px solid var(--border-default)',

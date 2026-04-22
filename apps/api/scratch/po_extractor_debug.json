@@ -1,0 +1,33 @@
+{
+  "initial_input": {
+    "initial_input": {
+      "filename": "test_document_2.png",
+      "file_type": "png",
+      "uploaded_at": "2026-04-22T14:09:55.977Z"
+    }
+  },
+  "s_file_upload": {
+    "initial_input": {
+      "filename": "test_document_2.png",
+      "file_type": "png",
+      "uploaded_at": "2026-04-22T14:09:55.977Z"
+    }
+  },
+  "s_ocr": {
+    "text": "APEX INDUSTRIAL SYSTEMS - FABRICATION ORDER\nPO Number: APEX-992-2026\nDate: May 12, 2026\n\nLine Items:\n1. Custom Hydraulic Cylinders (Quantity 12)\n2. High-Pressure Seal Kits (Quantity 50)\n\nTOTAL AMOUNT: 8420.50\nTERMS: Net 45",
+    "filename": "test_document_2.png",
+    "metadata": {
+      "pages": 1,
+      "engine": "seyon_demo_vision",
+      "file_type": "png"
+    }
+  },
+  "s_drawing_cls": {
+    "drawing_type": "BOM List",
+    "confidence": 0.9,
+    "metadata": {
+      "reason": "The document contains a list of items with quantities and a total amount, which is characteristic of a Bill of Materials.",
+      "engine": "groq_llm"
+    }
+  }
+}

@@ -37,9 +37,18 @@ class OCRBlock(BaseBlock):
         logger.info(f"Running OCR {'(SANDBOX)' if self.is_sandbox else '(LIVE)'}...")
         
         file_meta = {}
-        for val in input_data.values():
-            if isinstance(val, dict) and "filename" in val:
-                file_meta = val
+        for key, val in input_data.items():
+            if isinstance(val, dict):
+                # Search nested dicts
+                if "filename" in val:
+                    file_meta = val
+                    break
+                # Often the API nests it like {"initial_input": {"trigger": {"filename": "..."}}}
+                for subkey, subval in val.items():
+                    if isinstance(subval, dict) and "filename" in subval:
+                        file_meta = subval
+                        break
+            if file_meta:
                 break
 
         filename = file_meta.get("filename", "document.pdf")
@@ -86,9 +95,19 @@ class OCRBlock(BaseBlock):
 
         # Step 2: Try Groq LLM to generate realistic OCR text for other files
         try:
-            from app.services.llm import LLMService
-            llm = LLMService()
-            if llm.client:
+            import json as _json
+            llm = None
+            try:
+                from app.services.llm import LLMService
+                llm = LLMService()
+            except ImportError:
+                import sys, os
+                api_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "apps", "api"))
+                if api_dir not in sys.path: sys.path.insert(0, api_dir)
+                from app.services.llm import LLMService
+                llm = LLMService()
+
+            if llm and llm.client:
                 prompt = (
                     f"You are an OCR system processing a file named '{filename}' (type: {file_type}) "
                     f"submitted to SEYON Engineering for mechanical drawing review. "
@@ -96,7 +115,7 @@ class OCRBlock(BaseBlock):
                     f"Include: a drawing number, revision letter, title, date, PO reference number, vendor name, and total value. "
                     f"Format it as raw text lines, no markdown, no explanations."
                 )
-                response = await llm.chat_completion([{"role": "user", "content": prompt}])
+                response = await llm.chat_completion([{"role": "user", "content": prompt}], json_mode=False)
                 text = response if isinstance(response, str) else str(response)
                 print(f"[BLOCK] OCRBlock: LLM OCR extraction successful")
                 return {
