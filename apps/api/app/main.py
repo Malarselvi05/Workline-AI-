@@ -98,6 +98,7 @@ app.include_router(runs.router)
 app.include_router(ws.router)
 app.include_router(schedules.router)
 app.include_router(packs.router)
+app.include_router(dashboard.router, prefix="/analytics", tags=["Analytics"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 
 @app.get("/")

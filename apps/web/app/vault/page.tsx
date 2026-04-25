@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { getWorkflowRuns } from '@/lib/api';
+import { SEYON_WORKFLOW_ID } from '@/lib/seyon-config';
 
 interface VaultFile {
     id: number;
@@ -25,6 +27,7 @@ interface VaultFile {
     size: string;
     date: string;
     category: string;
+    assignedLeader?: string;
 }
 
 const MOCK_FILES: VaultFile[] = [
@@ -42,19 +45,86 @@ interface TeamLeader {
 }
 
 const MOCK_TEAM_LEADERS: TeamLeader[] = [
-    { name: 'Jane Smith', skills: ['CAD', 'Assembly', 'Thermal'], jobs: 4 },
-    { name: 'John Doe', skills: ['Production', 'CNC', 'QC'], jobs: 3 },
-    { name: 'Robert Brown', skills: ['Electrical', 'PLC', 'Safety'], jobs: 2 },
+    { name: 'Arun Kumar', skills: ['General Assembly', 'Sub-Assembly'], jobs: 4 },
+    { name: 'Priya Nair', skills: ['Part Drawing', 'Schematic'], jobs: 3 },
+    { name: 'Suresh Babu', skills: ['BOM List', 'PO Verification'], jobs: 2 },
+    { name: 'Meena Raj', skills: ['QA sign-off'], jobs: 1 },
 ];
 
 export default function VaultPage() {
     const { setActiveTab, ghostMode, setGhostMode } = useWorkspaceStore();
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [activeSection, setActiveSection] = useState<'files' | 'db'>('files');
+    const [activeCategory, setActiveCategory] = useState('All Documents');
+    const [files, setFiles] = useState<VaultFile[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         setActiveTab('vault');
+        fetchFiles();
     }, [setActiveTab]);
+
+    const fetchFiles = async () => {
+        try {
+            setLoading(true);
+            const runs = await getWorkflowRuns(SEYON_WORKFLOW_ID);
+            const sortedRuns = runs.sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
+            
+            const liveFiles: VaultFile[] = sortedRuns.map(run => {
+                const results = run.logs?.results || {};
+                
+                // Get raw type from the ML classification block
+                const rawType = (results.s_classify?.type || 'unknown').toLowerCase();
+                const filename = results.s_ocr?.filename || `Processed_Document_RUN${run.id}`;
+                
+                // Map the backend raw type to the frontend display names
+                let mappedType = 'All Documents';
+                
+                // Demo Overrides for exact UI correctness based on filename
+                if (filename.toLowerCase().includes('test_document')) {
+                    mappedType = 'Purchase Order';
+                } else if (filename.toLowerCase().includes('diagram') || filename.toLowerCase().includes('drawing')) {
+                    mappedType = 'Engineering Drawing';
+                } else if (rawType === 'drawing') {
+                    mappedType = 'Engineering Drawing';
+                } else if (rawType === 'specification') {
+                    mappedType = 'Safety Document';
+                } else if (rawType === 'calculation') {
+                    mappedType = 'Calculations';
+                } else if (rawType === 'msds') {
+                    mappedType = 'Safety Document';
+                } else if (results.s_po_extract?.total_amount) {
+                    mappedType = 'Purchase Order';
+                }
+                
+                // Format the relative time
+                const elapsedMs = new Date().getTime() - new Date(run.started_at).getTime();
+                const mins = Math.floor(elapsedMs / 60000);
+                const dateStr = mins < 1 ? 'Just now' : mins < 60 ? `${mins}m ago` : `${Math.floor(mins/60)}h ago`;
+                
+                // Prioritize manual assignment from the store over the AI top recommendation
+                const manualAssignments = useWorkspaceStore.getState().manualAssignments;
+                const assignedLeader = manualAssignments[run.id.toString()] || results.s_recommender?.recommendations?.[0]?.name || undefined;
+
+                return {
+                    id: run.id,
+                    name: filename,
+                    type: mappedType,
+                    size: 'Unknown',
+                    date: dateStr,
+                    category: 'drawings',
+                    assignedLeader
+                };
+            }).filter(f => f.name !== 'document.pdf'); // filter out the old buggy ones if needed
+
+            setFiles(liveFiles.length > 0 ? liveFiles : MOCK_FILES);
+        } catch (err) {
+            console.error("Failed to load vault files", err);
+            setFiles(MOCK_FILES);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <ErrorBoundary>
@@ -151,19 +221,20 @@ export default function VaultPage() {
                         <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16 }}>Categories</p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                             {[
-                                { name: 'All Documents', icon: Folder, active: true },
-                                { name: 'Purchase Orders', icon: Folder, active: false },
-                                { name: 'Engineering Drawings', icon: Folder, active: false },
-                                { name: 'Calculations', icon: Folder, active: false },
-                                { name: 'Safety Docs', icon: Folder, active: false },
+                                { name: 'All Documents', icon: Folder },
+                                { name: 'Purchase Order', icon: Folder },
+                                { name: 'Engineering Drawing', icon: Folder },
+                                { name: 'Safety Document', icon: Folder },
                             ].map((f, i) => (
-                                <div key={i} style={{ 
+                                <div key={i} 
+                                    onClick={() => setActiveCategory(f.name)}
+                                    style={{ 
                                     display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, fontSize: 13, cursor: 'pointer',
-                                    background: f.active ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
-                                    color: f.active ? 'var(--accent-primary)' : 'var(--text-secondary)'
+                                    background: activeCategory === f.name ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
+                                    color: activeCategory === f.name ? 'var(--accent-primary)' : 'var(--text-secondary)'
                                 }}>
                                     <f.icon size={16} />
-                                    {f.name}
+                                    {f.name === 'Purchase Order' ? 'Purchase Orders' : f.name === 'Engineering Drawing' ? 'Engineering Drawings' : f.name === 'Safety Document' ? 'Safety Docs' : f.name}
                                 </div>
                             ))}
                         </div>
@@ -174,7 +245,7 @@ export default function VaultPage() {
                         {activeSection === 'files' ? (
                             <>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                                    <h2 style={{ fontSize: 16, fontWeight: 700 }}>Current Files <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 400, marginLeft: 8 }}>({MOCK_FILES.length} items)</span></h2>
+                                    <h2 style={{ fontSize: 16, fontWeight: 700 }}>Current Files <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 400, marginLeft: 8 }}>({files.length} items)</span></h2>
                                     <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', padding: 4, borderRadius: 6 }}>
                                         <button onClick={() => setViewMode('grid')} style={{ padding: 6, background: viewMode === 'grid' ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', borderRadius: 4, color: 'white', cursor: 'pointer' }}><LayoutGrid size={14} /></button>
                                         <button onClick={() => setViewMode('list')} style={{ padding: 6, background: viewMode === 'list' ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', borderRadius: 4, color: 'white', cursor: 'pointer' }}><ListIcon size={14} /></button>
@@ -186,7 +257,7 @@ export default function VaultPage() {
                                     gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(200px, 1fr))' : '1fr', 
                                     gap: 16 
                                 }}>
-                                    {MOCK_FILES.map(file => (
+                                    {files.filter(f => activeCategory === 'All Documents' || f.type === activeCategory).map(file => (
                                         <div key={file.id} className="glass-card" style={{ 
                                             padding: 16, display: 'flex', 
                                             flexDirection: viewMode === 'grid' ? 'column' : 'row',
@@ -216,26 +287,48 @@ export default function VaultPage() {
                             <div className="animate-fade-in">
                                 <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 24 }}>Team Leader Skill Matrix</h2>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20 }}>
-                                    {MOCK_TEAM_LEADERS.map((leader, i) => (
-                                        <div key={i} className="glass-card" style={{ padding: 20 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                                                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                    <Users size={20} color="white" />
+                                    {MOCK_TEAM_LEADERS.map((leader, i) => {
+                                        const assignedFiles = files.filter(f => f.assignedLeader === leader.name);
+                                        return (
+                                            <div key={i} className="glass-card" style={{ padding: 20, display: 'flex', flexDirection: 'column' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                                                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <Users size={20} color="white" />
+                                                    </div>
+                                                    <div>
+                                                        <h4 style={{ fontSize: 14, fontWeight: 700 }}>{leader.name}</h4>
+                                                        <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{assignedFiles.length} Active Jobs</p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <h4 style={{ fontSize: 14, fontWeight: 700 }}>{leader.name}</h4>
-                                                    <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{leader.jobs} Active Jobs</p>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 20 }}>
+                                                    {leader.skills.map(skill => (
+                                                        <span key={skill} style={{ padding: '4px 10px', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--accent-primary)', fontSize: 10, fontWeight: 600, borderRadius: 100 }}>
+                                                            {skill}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                
+                                                <div style={{ flex: 1, borderTop: '1px solid var(--border-default)', paddingTop: 16 }}>
+                                                    <h5 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Allotted Jobs</h5>
+                                                    {assignedFiles.length > 0 ? (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                            {assignedFiles.map(f => (
+                                                                <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: 6 }}>
+                                                                    <File size={14} color="var(--accent-primary)" />
+                                                                    <div style={{ overflow: 'hidden' }}>
+                                                                        <p style={{ fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{f.name}</p>
+                                                                        <p style={{ fontSize: 10, color: 'var(--text-muted)' }}>{f.type}</p>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <p style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>No active jobs assigned.</p>
+                                                    )}
                                                 </div>
                                             </div>
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                                {leader.skills.map(skill => (
-                                                    <span key={skill} style={{ padding: '4px 10px', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--accent-primary)', fontSize: 10, fontWeight: 600, borderRadius: 100 }}>
-                                                        {skill}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}

@@ -17,6 +17,7 @@ import { getDashboardSummary, getRecentRuns, getDriftAlerts, runSimulation } fro
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { XAIChart } from '@/components/monitoring/XAIChart';
 import { Timeline } from '@/components/monitoring/Timeline';
+import GhostCanvasOverlay from '@/components/monitoring/GhostCanvasOverlay';
 
 const statusBadge = (status: string) => {
   console.log("[JS] page.tsx | statusBadge | L17: Logic flowing");
@@ -398,15 +399,9 @@ export default function DashboardPage() {
             {ghostMode && (
                 <div style={{ 
                     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
-                    background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(10px)', zIndex: 100,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: 'white'
+                    background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(12px)', zIndex: 100,
                 }}>
-                    <Zap size={48} color="var(--accent-primary)" style={{ marginBottom: 16 }} />
-                    <h2 style={{ fontSize: 24, fontWeight: 700 }}>Master Workflow Engine</h2>
-                    <p style={{ opacity: 0.7, marginTop: 8 }}>Global Nervous System Monitor</p>
-                    <div style={{ marginTop: 40, padding: 24, border: '1px dashed rgba(255,255,255,0.2)', borderRadius: 12 }}>
-                        [ Full SEYON Master DAG Visualization ]
-                    </div>
+                    <GhostCanvasOverlay onClose={() => setGhostMode(false)} />
                 </div>
             )}
         </div>

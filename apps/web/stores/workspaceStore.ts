@@ -9,6 +9,7 @@ interface WorkspaceState {
     ghostMode: boolean;
     sidebarCollapsed: boolean;
     loading: boolean;
+    manualAssignments: Record<string, string>;
 
     setUser: (user: User | null) => void;
     fetchUser: () => Promise<void>;
@@ -24,6 +25,7 @@ interface WorkspaceState {
     installedPacks: string[];
     fetchPacks: () => Promise<void>;
     reset: () => void;
+    assignJob: (runId: string, leaderName: string) => void;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
@@ -33,6 +35,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     activeTab: 'dashboard',
     ghostMode: false,
     sidebarCollapsed: false,
+    manualAssignments: {},
 
     setUser: (user) => set({ user }),
 
@@ -81,6 +84,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         })),
 
     toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+
+    assignJob: (runId, leaderName) => set((state) => ({
+        manualAssignments: { ...state.manualAssignments, [runId]: leaderName }
+    })),
 
     fetchWorkflows: async () => {
         set({ loading: true });

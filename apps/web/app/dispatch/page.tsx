@@ -18,6 +18,7 @@ import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { getWorkflowRuns, getRunDetail } from '@/lib/api';
 import { SEYON_WORKFLOW_ID } from '@/lib/seyon-config';
+import { useRouter } from 'next/navigation';
 
 interface Recommendation {
     id: number;
@@ -32,8 +33,8 @@ interface Recommendation {
 const MOCK_RECOMMENDATIONS: Recommendation[] = [
     { 
         id: 1, 
-        name: 'Jane Smith', 
-        role: 'Lead Architect', 
+        name: 'Arun Kumar', 
+        role: 'Senior Mechanical Lead', 
         score: 0.95, 
         reason: 'Best match — Assembly expertise · 3 yrs historical success with PO-type docs.', 
         workload: 65,
@@ -41,8 +42,8 @@ const MOCK_RECOMMENDATIONS: Recommendation[] = [
     },
     { 
         id: 2, 
-        name: 'John Doe', 
-        role: 'Production Lead', 
+        name: 'Priya Nair', 
+        role: 'Drawing Review Engineer', 
         score: 0.81, 
         reason: 'Good fit — strong mechanical background, but currently managing 3 other jobs.', 
         workload: 40,
@@ -50,8 +51,8 @@ const MOCK_RECOMMENDATIONS: Recommendation[] = [
     },
     { 
         id: 3, 
-        name: 'Robert Brown', 
-        role: 'Electrical Head', 
+        name: 'Meena Raj', 
+        role: 'QA Lead', 
         score: 0.54, 
         reason: 'Partial match — different specialty area. Heavy current workload.', 
         workload: 90,
@@ -67,6 +68,7 @@ interface SelectedJob {
 }
 
 export default function DispatchPage() {
+    const router = useRouter();
     const { setActiveTab, ghostMode, setGhostMode } = useWorkspaceStore();
     const [selectedJob, setSelectedJob] = useState<SelectedJob | null>(null);
     const [recommendations, setRecommendations] = useState<Recommendation[]>(MOCK_RECOMMENDATIONS);
@@ -243,7 +245,7 @@ export default function DispatchPage() {
                                     </div>
                                     <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Assignment Confirmed!</h3>
                                     <p style={{ color: 'var(--text-secondary)', marginBottom: 32 }}>Job <strong>{selectedJob.docName}</strong> has been assigned to <strong>{assigned}</strong>.</p>
-                                    <button onClick={() => setAssigned(null)} className="btn-primary">Process Next Job</button>
+                                    <button onClick={() => router.push('/intake')} className="btn-primary">Process Next Job</button>
                                 </div>
                             ) : (
                                 recommendations.map((rec, i) => (
@@ -290,7 +292,11 @@ export default function DispatchPage() {
                                                     </div>
                                                 </div>
                                                 <button 
-                                                    onClick={() => setAssigned(rec.name)}
+                                                    onClick={() => {
+                                                        setAssigned(rec.name);
+                                                        const runId = selectedJob.id.replace('RUN-', '');
+                                                        useWorkspaceStore.getState().assignJob(runId, rec.name);
+                                                    }}
                                                     className={i === 0 ? "btn-primary" : "btn-secondary"} 
                                                     style={{ padding: '8px 20px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}
                                                 >
