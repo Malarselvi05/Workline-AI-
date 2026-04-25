@@ -1,62 +1,34 @@
-# WorkLine AI: Future Works Plan
+# Future Works & Project Roadmap
 
-This document maps the current state of WorkLine AI against the 13 required core and advanced features, and outlines the roadmap for the next development phase.
+The immediate SEYON Operations Portal pivot has been successfully completed, providing a powerful, specialized AI-driven workflow for mechanical engineering job management.
 
-## 🗺️ Feature Mapping & Status
+Moving forward, the focus will shift towards enhancing the multi-tenant architecture, expanding the AI capabilities, and preparing the platform for production-grade deployment.
 
-| ID | Feature | Status | Technology (Requested) | Current Impl. |
-| :--- | :--- | :--- | :--- | :--- |
-| ID | Feature | Status | Tab (SEYON Portal) | Real AI Implementation |
-| :--- | :--- | :--- | :--- | :--- |
-| **F1** | Smart PO Processing | 🟢 Done | **Intake** | Regex + spaCy NER (Mechanical Block) |
-| **F2** | Doc Classification | 🟢 Done | **Intake** | RandomForest (MLService) |
-| **F3** | Engineer Allocation | 🟢 Done | **Dispatch** | Cosine Similarity (MLService) |
-| **F4** | Task Allocation | 🟢 Done | **Dispatch** | Rule-based templates (Block Library) |
-| **F5** | Delay Prediction | 🟢 Done | **Dashboard** | RandomForest Risk Model |
-| **F6** | Workflow Execution | 🟢 Ready | **Ghost Mode** | WebSocket + Real-time Canvas |
-| **F7** | AI Generator | 🟢 Done | **Ghost Mode** | Registry-Aware Planner + Chat |
-| **F8** | XAI Dashboard | 🟢 Done | **Dashboard** | Recharts XAI Chart Component |
-| **F9** | Auto Organizer | 🟢 Done | **Vault** | Structured S3 Pattern (StoreBlock) |
-| **F10** | Smart Alerts | 🟡 Partial | **Dashboard** | Backend Ready, UI Toast Next |
-| **F11** | Simulation Mode | 🟢 Done | **Dashboard** | "Run Simulation" SEYON Scenarios |
-| **F12** | Timeline View | 🟢 Done | **Dashboard** | Timeline Component (Run Logs) |
-| **F13** | Feedback Learning | 🔴 Missing | **Dispatch** | Human-in-the-loop override |
-| **F14** | Bending Simulation | 🟡 In Progress | **Bending** | Physics-based bending estimation |
-| **F15** | Production Queue | 🟡 In Progress | **Bending** | Real-time machine status tracking |
+## 🚀 Near-Term Priorities (v1.1)
 
----
+### 1. Robust Multi-Tenancy Expansion
+- [ ] **Organization Boundaries**: Enforce strict data isolation for `WorkflowRun`, `RunNodeState`, and `Document` models across multiple organizations.
+- [ ] **Role-Based Access Control (RBAC)**: Implement granular permissions (Admin vs Editor vs Viewer) affecting the visibility of the "Ghost Canvas" and "Settings" tabs.
+- [ ] **Cross-Tenant Telemetry**: Improve the dashboard to support global and per-tenant KPI analytics.
 
-## 🚀 Phase 4 Roadmap: The "Real ML" Milestone
+### 2. Machine Learning Enhancements
+- [ ] **Advanced OCR**: Move beyond `pytesseract` to a more robust, layout-aware OCR engine (e.g., Azure Document Intelligence or AWS Textract) to better parse complex engineering drawings.
+- [ ] **Self-Learning Classifier**: Allow the `MLService` classifier to learn from manual routing corrections in the Knowledge Vault (human-in-the-loop training).
+- [ ] **Capacity Planning Models**: Upgrade the Team Leader recommender to factor in real-time factory floor scheduling data (Bending machine queues).
 
-### Phase 4.1: Foundation & Dependencies
-- [ ] Update `requirements.txt` with `scikit-learn`, `spacy`, `pytesseract`, `pdf2image`, `pandas`, `numpy`.
-- [ ] Initialize spaCy `en_core_web_sm` model.
-- [ ] Setup synthetic data generator for Simulation Mode (F11).
+### 3. Workflow Engine Upgrades
+- [ ] **Parallel Execution**: Enable true parallel node execution in the `WorkflowEngine` to dramatically speed up multi-stage pipelines.
+- [ ] **Version Control & Rollbacks**: Fully operationalize the DAG versioning system so admins can safely trial new AI logic and revert if success rates drop.
+- [ ] **Automated Retries**: Implement exponential backoff for external API calls inside blocks (e.g., email dispatch or cloud storage).
 
-### Phase 4.2: Real Block Implementation
-- [ ] **PO Extractor**: Replace LLM logic with Regex + spaCy NER. Integrate `pytesseract` for raw OCR text extraction.
-- [ ] **Doc Classifier**: Implement TF-IDF vectorizer + RandomForest classifier. Train on a synthetic corpus of "drawing", "spec", "calculation", "MSDS".
-- [ ] **Allocation Engine**: Implement `cosine_similarity` for engineer recommendations based on task vectors.
-- [ ] **Delay Predictor**: New service/block using a pre-trained (on synthetic data) RandomForest model.
+## 🔮 Long-Term Vision (v2.0+)
 
-### Phase 4.3: Advanced UI & Simulation
-- [x] **Explainable AI Dashboard**: Add a component to visualize `feature_importances_` for delay risk.
-- [x] **Bending Dashboard**: Implement real-time telemetry visualization for shop floor machines.
-- [ ] **Machine Telemetry**: Connect Bending tab to `workspaceStore` for real-time progress updates.
-- [x] **Simulation Manager**: Add "Run Demo" button that seeds the DB with synthetic files/runs.
-- [ ] **Timeline View**: Build the `Timeline` component to display `RunNodeState` logs.
-- [ ] **Smart Alerts**: Integrate toast notifications/sidebar badges triggered by the Delay Prediction output.
+### 1. IoT Factory Floor Integration
+- [ ] **Real CNC Telemetry**: Replace the F11 simulated IoT metrics on the "Bending" tab with live MQTT streams from actual Brake Presses and Laser Cutters.
+- [ ] **Predictive Maintenance**: Use machine learning to monitor the telemetry and trigger automated maintenance workflows when machine anomalies are detected.
 
-### Phase 4.4: Hardening & Feedback
-- [ ] **Planner Upgrade**: Add pre-validation logic to `planner.py` to check block compatibility.
-- [ ] **Feedback Loop**: Add a "Correct AI" button in the recommendation panel to store human overrides (F13).
+### 2. Supplier Portals
+- [ ] **External Vendor Access**: Create a simplified portal for suppliers to upload Purchase Orders directly, bypassing the internal "Intake" dropzone and automating the ingestion entirely.
 
----
-
-## 🛠️ Updated Tech Stack (ML Expansion)
-
-- **OCR**: `pytesseract` + `pdf2image` + `poppler-utils`.
-- **NLP**: `spaCy` (NER/Entity extraction).
-- **ML**: `scikit-learn` (RandomForest, TF-IDF, Cosine Similarity).
-- **Data**: `pandas` & `numpy` for feature engineering.
-- **Viz**: `matplotlib`/`seaborn` for XAI charts (backend-to-image).
+### 3. Voice & Chat Interfaces
+- [ ] **Conversational Automation**: Allow shop floor managers to query job statuses or reassign work via natural language prompts using the integrated ChatPanel.
