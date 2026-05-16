@@ -1,25 +1,25 @@
 {
   "initial_input": {
     "initial_input": {
-      "filename": "Purchase-Order-Template.jpg",
-      "file_type": "jpg",
-      "uploaded_at": "2026-05-15T14:10:51.912Z"
+      "filename": "simple-purchase-order.png",
+      "file_type": "png",
+      "uploaded_at": "2026-05-16T11:41:26.970Z"
     }
   },
   "s_file_upload": {
     "initial_input": {
-      "filename": "Purchase-Order-Template.jpg",
-      "file_type": "jpg",
-      "uploaded_at": "2026-05-15T14:10:51.912Z"
+      "filename": "simple-purchase-order.png",
+      "file_type": "png",
+      "uploaded_at": "2026-05-16T11:41:26.970Z"
     }
   },
   "s_ocr": {
     "text": "{'error': \"Error code: 401 - {'error': {'message': 'Invalid API Key', 'type': 'invalid_request_error', 'code': 'invalid_api_key'}}\"}",
-    "filename": "Purchase-Order-Template.jpg",
+    "filename": "simple-purchase-order.png",
     "metadata": {
       "pages": 1,
       "engine": "groq_llm_proxy",
-      "file_type": "jpg"
+      "file_type": "png"
     }
   },
   "s_drawing_cls": {

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
 from app.models.models import TeamLeader
-from app.routers.auth import get_current_user
+from app.auth.dependencies import get_current_user
 
 router = APIRouter(prefix="/team-leaders", tags=["Team Leaders"])
 

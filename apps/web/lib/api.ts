@@ -219,6 +219,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
         const error = await res.json().catch(() => ({ detail: res.statusText }));
         throw new Error(error.detail || `API error: ${res.status}`);
     }
+
+    // Handle 204 No Content or empty bodies
+    if (res.status === 204 || res.headers.get('content-length') === '0') {
+        return {} as T;
+    }
+
     return res.json();
 }
 
