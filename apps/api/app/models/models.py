@@ -184,3 +184,15 @@ class ConversationTurn(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     conversation = relationship("Conversation", back_populates="turns")
+
+
+class TeamLeader(Base):
+    __tablename__ = "team_leaders"
+    id           = Column(Integer, primary_key=True, index=True)
+    org_id       = Column(Integer, ForeignKey("organisations.id"), nullable=True)
+    name         = Column(String, nullable=False)
+    role         = Column(String, nullable=True)   # e.g. "Senior Mechanical Lead"
+    skills       = Column(JSON, default=[])        # List[str] e.g. ["General Assembly", "CAD"]
+    workload_pct = Column(Integer, default=0)      # 0–100, updated as jobs are assigned
+    is_active    = Column(Boolean, default=True)
+    created_at   = Column(DateTime, default=datetime.utcnow)

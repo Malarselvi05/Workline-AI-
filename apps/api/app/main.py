@@ -29,7 +29,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from app.routers import auth, workflows, planning, blocks, runs, ws, dashboard, schedules, packs
+from app.routers import auth, workflows, planning, blocks, runs, ws, dashboard, schedules, packs, team_leaders
 
 from contextlib import asynccontextmanager
 
@@ -61,6 +61,8 @@ app.add_middleware(
         "http://127.0.0.1:3000",
         "http://[::1]:3000",
         "http://0.0.0.0:3000",
+        "http://localhost:3001",   # fallback when port 3000 is busy
+        "http://127.0.0.1:3001",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -100,6 +102,7 @@ app.include_router(schedules.router)
 app.include_router(packs.router)
 app.include_router(dashboard.router, prefix="/analytics", tags=["Analytics"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
+app.include_router(team_leaders.router)
 
 @app.get("/")
 async def root():

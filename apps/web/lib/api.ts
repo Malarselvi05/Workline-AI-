@@ -107,6 +107,10 @@ export interface WorkflowRun {
     status: 'pending' | 'running' | 'completed' | 'failed' | 'awaiting_review';
     started_at: string;
     ended_at?: string;
+    logs?: {
+        results?: Record<string, any>;
+        [key: string]: any;
+    } | null;
 }
 
 export interface RunNodeState {
@@ -153,6 +157,32 @@ export interface DriftAlert {
 export interface DomainPack {
     name: string;
     status: 'installed' | 'available';
+}
+
+export interface TeamLeader {
+    id: number;
+    org_id?: number;
+    name: string;
+    role?: string;
+    skills: string[];
+    workload_pct: number;
+    is_active: boolean;
+    created_at: string;
+}
+
+export interface TeamLeaderCreate {
+    name: string;
+    role?: string;
+    skills?: string[];
+    workload_pct?: number;
+}
+
+export interface TeamLeaderUpdate {
+    name?: string;
+    role?: string;
+    skills?: string[];
+    workload_pct?: number;
+    is_active?: boolean;
 }
 
 // ── Internal fetch wrapper ─────────────────────────────────────────────────
@@ -446,4 +476,28 @@ export async function getLatestRun(workflowId: number): Promise<WorkflowRun | nu
 export async function getAllRuns(workflowId: number): Promise<WorkflowRun[]> {
     const runs = await request<WorkflowRun[]>(`/workflows/${workflowId}/runs`);
     return (runs || []).sort((a, b) => b.id - a.id);
+}
+
+// ── Team Leaders (Skill Database) ──────────────────────────────────────────
+
+export async function listTeamLeaders(): Promise<TeamLeader[]> {
+    return request<TeamLeader[]>('/team-leaders');
+}
+
+export async function createTeamLeader(data: TeamLeaderCreate): Promise<TeamLeader> {
+    return request<TeamLeader>('/team-leaders', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+}
+
+export async function updateTeamLeader(id: number, data: TeamLeaderUpdate): Promise<TeamLeader> {
+    return request<TeamLeader>(`/team-leaders/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    });
+}
+
+export async function deleteTeamLeader(id: number): Promise<void> {
+    await request(`/team-leaders/${id}`, { method: 'DELETE' });
 }

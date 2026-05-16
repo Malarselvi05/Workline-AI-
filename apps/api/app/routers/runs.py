@@ -24,7 +24,10 @@ async def trigger_run(
     """
     Trigger a new execution of a workflow.
     """
-    workflow = db.query(models.Workflow).filter(models.Workflow.id == workflow_id).first()
+    workflow = db.query(models.Workflow).filter(
+        models.Workflow.id == workflow_id,
+        models.Workflow.org_id == current_user.org_id  # org-scoped
+    ).first()
     if not workflow:
         raise HTTPException(status_code=404, detail="Workflow not found")
         
@@ -46,21 +49,8 @@ async def trigger_run(
         logger.error(f"Execution failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/workflows/{workflow_id}/runs")
-async def list_workflow_runs(
-    workflow_id: int, 
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
-):
-    """
-    List all runs for a specific workflow.
-    """
-    workflow = db.query(models.Workflow).filter(models.Workflow.id == workflow_id).first()
-    if not workflow:
-        raise HTTPException(status_code=404, detail="Workflow not found")
-        
-    runs = db.query(models.WorkflowRun).filter(models.WorkflowRun.workflow_id == workflow_id).all()
-    return runs
+# NOTE: GET /workflows/{workflow_id}/runs is defined in workflows.py with org scoping.
+# Do not duplicate it here to avoid route shadowing.
 
 @router.get("/runs/{run_id}")
 async def get_run_detail(

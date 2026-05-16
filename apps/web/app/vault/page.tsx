@@ -11,13 +11,24 @@ import {
     Trash2,
     Database,
     Users,
-    ChevronRight,
+    Plus,
+    Pencil,
+    X,
+    Check,
     LayoutGrid,
     List as ListIcon
 } from 'lucide-react';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
-import { getWorkflowRuns } from '@/lib/api';
+import {
+    getWorkflowRuns,
+    listTeamLeaders,
+    createTeamLeader,
+    updateTeamLeader,
+    deleteTeamLeader,
+    type TeamLeader,
+    type TeamLeaderCreate,
+} from '@/lib/api';
 import { SEYON_WORKFLOW_ID } from '@/lib/seyon-config';
 
 interface VaultFile {
@@ -38,18 +49,17 @@ const MOCK_FILES: VaultFile[] = [
     { id: 5, name: 'MSDS_Coolant_V2.pdf', type: 'Safety Document', size: '2.1 MB', date: 'Yesterday', category: 'safety' },
 ];
 
-interface TeamLeader {
-    name: string;
-    skills: string[];
-    jobs: number;
-}
+// TeamLeader type is imported from @/lib/api
 
-const MOCK_TEAM_LEADERS: TeamLeader[] = [
-    { name: 'Arun Kumar', skills: ['General Assembly', 'Sub-Assembly'], jobs: 4 },
-    { name: 'Priya Nair', skills: ['Part Drawing', 'Schematic'], jobs: 3 },
-    { name: 'Suresh Babu', skills: ['BOM List', 'PO Verification'], jobs: 2 },
-    { name: 'Meena Raj', skills: ['QA sign-off'], jobs: 1 },
+const SKILL_COLORS = [
+    { bg: 'rgba(99,102,241,0.12)', color: '#818cf8' },
+    { bg: 'rgba(16,185,129,0.12)', color: '#34d399' },
+    { bg: 'rgba(245,158,11,0.12)', color: '#fbbf24' },
+    { bg: 'rgba(236,72,153,0.12)', color: '#f472b6' },
+    { bg: 'rgba(59,130,246,0.12)', color: '#60a5fa' },
 ];
+
+const EMPTY_FORM: TeamLeaderCreate = { name: '', role: '', skills: [] };
 
 export default function VaultPage() {
     const { setActiveTab, ghostMode, setGhostMode } = useWorkspaceStore();
@@ -59,10 +69,87 @@ export default function VaultPage() {
     const [files, setFiles] = useState<VaultFile[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // ── Skill DB state ─────────────────────────────────────────────────────
+    const [leaders, setLeaders] = useState<TeamLeader[]>([]);
+    const [dbLoading, setDbLoading] = useState(false);
+    const [showModal, setShowModal] = useState(false);
+    const [editTarget, setEditTarget] = useState<TeamLeader | null>(null);
+    const [form, setForm] = useState<TeamLeaderCreate>(EMPTY_FORM);
+    const [tagInput, setTagInput] = useState('');
+    const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+    const [saving, setSaving] = useState(false);
+
     useEffect(() => {
         setActiveTab('vault');
         fetchFiles();
+        fetchLeaders();
     }, [setActiveTab]);
+
+    const fetchLeaders = async () => {
+        try {
+            setDbLoading(true);
+            const data = await listTeamLeaders();
+            setLeaders(data);
+        } catch (err) {
+            console.error('Failed to load team leaders', err);
+        } finally {
+            setDbLoading(false);
+        }
+    };
+
+    const openCreate = () => {
+        setEditTarget(null);
+        setForm(EMPTY_FORM);
+        setTagInput('');
+        setShowModal(true);
+    };
+
+    const openEdit = (leader: TeamLeader) => {
+        setEditTarget(leader);
+        setForm({ name: leader.name, role: leader.role ?? '', skills: [...leader.skills] });
+        setTagInput('');
+        setShowModal(true);
+    };
+
+    const addTag = () => {
+        const t = tagInput.trim();
+        if (t && !form.skills?.includes(t)) {
+            setForm(f => ({ ...f, skills: [...(f.skills ?? []), t] }));
+        }
+        setTagInput('');
+    };
+
+    const removeTag = (skill: string) => {
+        setForm(f => ({ ...f, skills: (f.skills ?? []).filter(s => s !== skill) }));
+    };
+
+    const saveLeader = async () => {
+        if (!form.name.trim()) return;
+        try {
+            setSaving(true);
+            if (editTarget) {
+                await updateTeamLeader(editTarget.id, form);
+            } else {
+                await createTeamLeader(form);
+            }
+            await fetchLeaders();
+            setShowModal(false);
+        } catch (err) {
+            console.error('Save failed', err);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDelete = async (id: number) => {
+        try {
+            await deleteTeamLeader(id);
+            setLeaders(prev => prev.filter(l => l.id !== id));
+            setDeleteConfirm(null);
+        } catch (err) {
+            console.error('Delete failed', err);
+        }
+    };
 
     const fetchFiles = async () => {
         try {
@@ -285,51 +372,194 @@ export default function VaultPage() {
                             </>
                         ) : (
                             <div className="animate-fade-in">
-                                <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 24 }}>Team Leader Skill Matrix</h2>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20 }}>
-                                    {MOCK_TEAM_LEADERS.map((leader, i) => {
-                                        const assignedFiles = files.filter(f => f.assignedLeader === leader.name);
-                                        return (
-                                            <div key={i} className="glass-card" style={{ padding: 20, display: 'flex', flexDirection: 'column' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                                                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                        <Users size={20} color="white" />
-                                                    </div>
-                                                    <div>
-                                                        <h4 style={{ fontSize: 14, fontWeight: 700 }}>{leader.name}</h4>
-                                                        <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{assignedFiles.length} Active Jobs</p>
-                                                    </div>
-                                                </div>
-                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 20 }}>
-                                                    {leader.skills.map(skill => (
-                                                        <span key={skill} style={{ padding: '4px 10px', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--accent-primary)', fontSize: 10, fontWeight: 600, borderRadius: 100 }}>
-                                                            {skill}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                                
-                                                <div style={{ flex: 1, borderTop: '1px solid var(--border-default)', paddingTop: 16 }}>
-                                                    <h5 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Allotted Jobs</h5>
-                                                    {assignedFiles.length > 0 ? (
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                                            {assignedFiles.map(f => (
-                                                                <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: 6 }}>
-                                                                    <File size={14} color="var(--accent-primary)" />
-                                                                    <div style={{ overflow: 'hidden' }}>
-                                                                        <p style={{ fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{f.name}</p>
-                                                                        <p style={{ fontSize: 10, color: 'var(--text-muted)' }}>{f.type}</p>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    ) : (
-                                                        <p style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>No active jobs assigned.</p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                                {/* Header row */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                                    <h2 style={{ fontSize: 16, fontWeight: 700 }}>
+                                        Team Leader Skill Matrix
+                                        <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 400, marginLeft: 8 }}>({leaders.length} employees)</span>
+                                    </h2>
+                                    <button
+                                        id="add-employee-btn"
+                                        onClick={openCreate}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: 6,
+                                            padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                                            background: 'var(--accent-primary)', color: 'white',
+                                            fontSize: 13, fontWeight: 600,
+                                            boxShadow: '0 0 16px rgba(99,102,241,0.35)',
+                                            transition: 'opacity 0.15s',
+                                        }}
+                                    >
+                                        <Plus size={15} /> Add Employee
+                                    </button>
                                 </div>
+
+                                {/* Empty state */}
+                                {dbLoading ? (
+                                    <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Loading…</p>
+                                ) : leaders.length === 0 ? (
+                                    <div style={{ textAlign: 'center', paddingTop: 60, color: 'var(--text-muted)' }}>
+                                        <Users size={48} style={{ marginBottom: 16, opacity: 0.3 }} />
+                                        <p style={{ fontSize: 14 }}>No team leaders yet. Click <strong>Add Employee</strong> to get started.</p>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20 }}>
+                                        {leaders.map((leader, i) => {
+                                            const assignedFiles = files.filter(f => f.assignedLeader === leader.name);
+                                            const isDeleting = deleteConfirm === leader.id;
+                                            return (
+                                                <div key={leader.id} className="glass-card" style={{ padding: 20, display: 'flex', flexDirection: 'column', position: 'relative', transition: 'box-shadow 0.2s' }}>
+                                                    {/* Avatar + name row */}
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                                                        <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                            <span style={{ fontWeight: 700, fontSize: 16, color: 'white' }}>{leader.name.charAt(0)}</span>
+                                                        </div>
+                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                            <h4 style={{ fontSize: 14, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{leader.name}</h4>
+                                                            {leader.role && <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{leader.role}</p>}
+                                                            <p style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{assignedFiles.length} Active Jobs</p>
+                                                        </div>
+                                                        {/* Edit / Delete buttons */}
+                                                        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                                                            <button
+                                                                id={`edit-leader-${leader.id}`}
+                                                                onClick={() => openEdit(leader)}
+                                                                title="Edit"
+                                                                style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: 6, padding: 7, cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex' }}
+                                                            >
+                                                                <Pencil size={13} />
+                                                            </button>
+                                                            <button
+                                                                id={`delete-leader-${leader.id}`}
+                                                                onClick={() => setDeleteConfirm(isDeleting ? null : leader.id)}
+                                                                title="Delete"
+                                                                style={{ background: isDeleting ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.06)', border: 'none', borderRadius: 6, padding: 7, cursor: 'pointer', color: isDeleting ? '#f87171' : 'var(--text-secondary)', display: 'flex' }}
+                                                            >
+                                                                <Trash2 size={13} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Delete confirmation */}
+                                                    {isDeleting && (
+                                                        <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '10px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                                            <p style={{ fontSize: 12, color: '#f87171' }}>Remove {leader.name}?</p>
+                                                            <div style={{ display: 'flex', gap: 6 }}>
+                                                                <button onClick={() => handleDelete(leader.id)} style={{ background: '#ef4444', border: 'none', borderRadius: 6, padding: '4px 10px', color: 'white', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Yes</button>
+                                                                <button onClick={() => setDeleteConfirm(null)} style={{ background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 6, padding: '4px 10px', color: 'white', fontSize: 12, cursor: 'pointer' }}>No</button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Skill tags */}
+                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+                                                        {leader.skills.length === 0
+                                                            ? <span style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>No skills added</span>
+                                                            : leader.skills.map((skill, si) => {
+                                                                const c = SKILL_COLORS[si % SKILL_COLORS.length];
+                                                                return (
+                                                                    <span key={skill} style={{ padding: '3px 10px', background: c.bg, color: c.color, fontSize: 10, fontWeight: 600, borderRadius: 100 }}>
+                                                                        {skill}
+                                                                    </span>
+                                                                );
+                                                            })
+                                                        }
+                                                    </div>
+
+                                                    {/* Assigned jobs */}
+                                                    <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: 14 }}>
+                                                        <h5 style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Allotted Jobs</h5>
+                                                        {assignedFiles.length > 0 ? (
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                                                {assignedFiles.map(f => (
+                                                                    <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.02)', padding: '7px 10px', borderRadius: 6 }}>
+                                                                        <File size={13} color="var(--accent-primary)" />
+                                                                        <div style={{ overflow: 'hidden' }}>
+                                                                            <p style={{ fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{f.name}</p>
+                                                                            <p style={{ fontSize: 10, color: 'var(--text-muted)' }}>{f.type}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <p style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>No active jobs assigned.</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                {/* ── Add / Edit Modal ─────────────────────────── */}
+                                {showModal && (
+                                    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <div id="employee-modal" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 16, padding: 32, width: 480, maxWidth: '95vw', boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                                                <h3 style={{ fontSize: 16, fontWeight: 700 }}>{editTarget ? 'Edit Employee' : 'Add Employee'}</h3>
+                                                <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
+                                            </div>
+
+                                            {/* Name */}
+                                            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Name *</label>
+                                            <input
+                                                id="employee-name-input"
+                                                value={form.name}
+                                                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                                                placeholder="e.g. Arun Kumar"
+                                                style={{ width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-default)', borderRadius: 8, color: 'white', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 16 }}
+                                            />
+
+                                            {/* Role */}
+                                            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Role</label>
+                                            <input
+                                                id="employee-role-input"
+                                                value={form.role ?? ''}
+                                                onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
+                                                placeholder="e.g. Senior Mechanical Lead"
+                                                style={{ width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-default)', borderRadius: 8, color: 'white', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 16 }}
+                                            />
+
+                                            {/* Skills tag input */}
+                                            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Skills <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(type & press Enter)</span></label>
+                                            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                                                <input
+                                                    id="skill-tag-input"
+                                                    value={tagInput}
+                                                    onChange={e => setTagInput(e.target.value)}
+                                                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
+                                                    placeholder="e.g. General Assembly"
+                                                    style={{ flex: 1, padding: '10px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-default)', borderRadius: 8, color: 'white', fontSize: 13, outline: 'none' }}
+                                                />
+                                                <button onClick={addTag} style={{ padding: '10px 14px', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 8, color: '#818cf8', cursor: 'pointer', fontSize: 13 }}>Add</button>
+                                            </div>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, minHeight: 28, marginBottom: 24 }}>
+                                                {(form.skills ?? []).map((skill, si) => {
+                                                    const c = SKILL_COLORS[si % SKILL_COLORS.length];
+                                                    return (
+                                                        <span key={skill} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 10px', background: c.bg, color: c.color, fontSize: 11, fontWeight: 600, borderRadius: 100 }}>
+                                                            {skill}
+                                                            <button onClick={() => removeTag(skill)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.color, padding: 0, display: 'flex', lineHeight: 1 }}><X size={11} /></button>
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            {/* Footer */}
+                                            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                                                <button onClick={() => setShowModal(false)} style={{ padding: '9px 18px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border-default)', borderRadius: 8, color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+                                                <button
+                                                    id="save-employee-btn"
+                                                    onClick={saveLeader}
+                                                    disabled={saving || !form.name.trim()}
+                                                    style={{ padding: '9px 20px', background: saving ? 'rgba(99,102,241,0.5)' : 'var(--accent-primary)', border: 'none', borderRadius: 8, color: 'white', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer' }}
+                                                >
+                                                    {saving ? 'Saving…' : editTarget ? 'Save Changes' : 'Create Employee'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>

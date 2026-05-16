@@ -1,32 +1,32 @@
 {
   "initial_input": {
     "initial_input": {
-      "filename": "test_document.png",
-      "file_type": "png",
-      "uploaded_at": "2026-04-25T13:05:07.114Z"
+      "filename": "Purchase-Order-Template.jpg",
+      "file_type": "jpg",
+      "uploaded_at": "2026-05-15T14:10:51.912Z"
     }
   },
   "s_file_upload": {
     "initial_input": {
-      "filename": "test_document.png",
-      "file_type": "png",
-      "uploaded_at": "2026-04-25T13:05:07.114Z"
+      "filename": "Purchase-Order-Template.jpg",
+      "file_type": "jpg",
+      "uploaded_at": "2026-05-15T14:10:51.912Z"
     }
   },
   "s_ocr": {
-    "text": "PRECISION DYNAMICS CORP - PURCHASE ORDER\nPO Number: PO-2026-SEYON-001\nDate: April 19, 2026\n\nLine Items:\n1. Titanium Gear Shafts (Quantity 50)\n2. High-Temp Ball Bearings (Quantity 200)\n\nTOTAL AMOUNT: 14526.25\nTERMS: Net 30",
-    "filename": "test_document.png",
+    "text": "{'error': \"Error code: 401 - {'error': {'message': 'Invalid API Key', 'type': 'invalid_request_error', 'code': 'invalid_api_key'}}\"}",
+    "filename": "Purchase-Order-Template.jpg",
     "metadata": {
       "pages": 1,
-      "engine": "seyon_demo_vision",
-      "file_type": "png"
+      "engine": "groq_llm_proxy",
+      "file_type": "jpg"
     }
   },
   "s_drawing_cls": {
-    "drawing_type": "BOM List",
-    "confidence": 0.9,
+    "drawing_type": "General Assembly",
+    "confidence": 0.8,
     "metadata": {
-      "reason": "The document contains a list of items with quantities and a total amount, which is characteristic of a Bill of Materials.",
+      "reason": "",
       "engine": "groq_llm"
     }
   }
