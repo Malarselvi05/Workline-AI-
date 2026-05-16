@@ -311,7 +311,7 @@ function WorkflowNode({ id, data, selected }: NodeProps) {
                                 whiteSpace: 'nowrap',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
-                                color: '#f1f5f9',
+                                color: 'var(--text-primary)',
                             }}
                         >
                             {data.label}

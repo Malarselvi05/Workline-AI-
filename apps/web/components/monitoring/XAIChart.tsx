@@ -14,24 +14,24 @@ const MOCK_IMPORTANCES = [
 export const XAIChart = () => {
     return (
         <div style={{ height: 260, width: '100%' }}>
-            <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 16, color: 'var(--text-secondary)' }}>
+            <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 16, color: 'var(--text-primary)' }}>
                 Explainable AI: Feature Importances (Delay Risk)
             </h3>
             <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={MOCK_IMPORTANCES} layout="vertical" margin={{ left: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="rgba(255,255,255,0.05)" />
+                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--border-default)" />
                     <XAxis type="number" hide />
                     <YAxis 
                         dataKey="name" 
                         type="category" 
                         axisLine={false} 
                         tickLine={false} 
-                        tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
+                        tick={{ fill: 'var(--text-primary)', fontSize: 11 }}
                     />
                     <Tooltip 
-                        cursor={{ fill: 'rgba(255,255,255,0.02)' }}
+                        cursor={{ fill: 'rgba(0,0,0,0.02)' }}
                         contentStyle={{ 
-                            background: 'rgba(20,20,30,0.95)', 
+                            background: 'var(--bg-elevated)', 
                             border: '1px solid var(--border-default)',
                             borderRadius: 8,
                             fontSize: 12

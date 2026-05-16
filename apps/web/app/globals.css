@@ -5,35 +5,35 @@
 @tailwind utilities;
 
 :root {
-  --bg-primary: #0a0e1a;
-  --bg-secondary: #111827;
-  --bg-tertiary: #1e293b;
-  --bg-elevated: #1a2236;
-  --bg-glass: rgba(17, 24, 39, 0.8);
+  --bg-primary: #F1EEE5;
+  --bg-secondary: #DFDBCF;
+  --bg-tertiary: #D5D1C5;
+  --bg-elevated: #FFFFFF;
+  --bg-glass: rgba(223, 219, 207, 0.85);
 
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-primary: #030304;
+  --text-secondary: #4A4A4F;
+  --text-muted: #73737A;
 
-  --accent-primary: #6366f1;
-  --accent-primary-hover: #818cf8;
+  --accent-primary: #BCAA89;
+  --accent-primary-hover: #A59475;
   --accent-secondary: #06b6d4;
   --accent-success: #10b981;
   --accent-warning: #f59e0b;
   --accent-danger: #ef4444;
   --accent-info: #3b82f6;
 
-  --border-default: rgba(148, 163, 184, 0.12);
-  --border-hover: rgba(148, 163, 184, 0.25);
+  --border-default: rgba(3, 3, 4, 0.12);
+  --border-hover: rgba(3, 3, 4, 0.25);
 
-  --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
-  --gradient-glass: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(6, 182, 212, 0.05) 100%);
-  --gradient-card: linear-gradient(180deg, rgba(30, 41, 59, 0.5) 0%, rgba(17, 24, 39, 0.8) 100%);
+  --gradient-primary: linear-gradient(135deg, #BCAA89 0%, #A59475 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(223, 219, 207, 0.9) 0%, rgba(223, 219, 207, 0.7) 100%);
+  --gradient-card: linear-gradient(180deg, rgba(241, 238, 229, 0.9) 0%, rgba(223, 219, 207, 1) 100%);
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.15);
+  --shadow-sm: 0 1px 2px rgba(3, 3, 4, 0.05);
+  --shadow-md: 0 4px 12px rgba(3, 3, 4, 0.08);
+  --shadow-lg: 0 8px 32px rgba(3, 3, 4, 0.12);
+  --shadow-glow: 0 0 20px rgba(188, 170, 137, 0.25);
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -77,16 +77,13 @@ html {
 
 /* ── Glass Card ── */
 .glass-card {
-  background: var(--bg-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: var(--bg-secondary);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
 }
 
 .glass-card-sm {
-  background: var(--bg-glass);
-  backdrop-filter: blur(12px);
+  background: var(--bg-secondary);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
 }
@@ -94,7 +91,7 @@ html {
 /* ── Buttons ── */
 .btn-primary {
   background: var(--gradient-primary);
-  color: white;
+  color: var(--text-primary);
   border: none;
   padding: 8px 18px;
   border-radius: var(--radius-sm);

@@ -208,7 +208,7 @@ export default function BlockPalette() {
                                                 }}
                                             />
                                             <div style={{ flex: 1, minWidth: 0 }}>
-                                                <p style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.2, color: '#e2e8f0' }}>
+                                                <p style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.2, color: 'var(--text-primary)' }}>
                                                     {block.label}
                                                 </p>
                                                 <p

@@ -18,6 +18,8 @@ croniter
 scikit-learn
 spacy
 pytesseract
+Pillow
+pdfplumber
 pdf2image
 pandas
 numpy

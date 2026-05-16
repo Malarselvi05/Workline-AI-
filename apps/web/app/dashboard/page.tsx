@@ -33,8 +33,8 @@ const statusBadge = (status: string) => {
 
 const LoadingSkeleton = () => (
     <div style={{ padding: '20px' }} className="glass-card animate-pulse">
-        <div style={{ height: 40, width: '60%', background: 'rgba(255,255,255,0.05)', marginBottom: 20 }}></div>
-        <div style={{ height: 100, background: 'rgba(255,255,255,0.05)' }}></div>
+        <div style={{ height: 40, width: '60%', background: 'rgba(0,0,0,0.05)', marginBottom: 20 }}></div>
+        <div style={{ height: 100, background: 'rgba(0,0,0,0.05)' }}></div>
     </div>
 );
 
@@ -135,7 +135,7 @@ export default function DashboardPage() {
                             className={`btn-ghost ${ghostMode ? 'active' : ''}`}
                             style={{ 
                                 display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
-                                background: ghostMode ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255,255,255,0.05)',
+                                background: ghostMode ? 'rgba(99, 102, 241, 0.2)' : 'rgba(0,0,0,0.05)',
                                 color: ghostMode ? 'var(--accent-primary)' : 'var(--text-secondary)',
                                 border: ghostMode ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
                                 borderRadius: 20, fontSize: 13, fontWeight: 600
@@ -218,7 +218,7 @@ export default function DashboardPage() {
                         </div>
                         <div>
                             {summaryLoading ? (
-                                <div style={{ height: 26, width: 40, background: 'rgba(255,255,255,0.05)', borderRadius: 4 }}></div>
+                                <div style={{ height: 26, width: 40, background: 'rgba(0,0,0,0.05)', borderRadius: 4 }}></div>
                             ) : (
                                 <p style={{ fontSize: 26, fontWeight: 700, lineHeight: 1 }}>{kpi.value}</p>
                             )}
@@ -269,7 +269,7 @@ export default function DashboardPage() {
                                                 padding: '10px 20px',
                                                 fontSize: 11,
                                                 fontWeight: 600,
-                                                color: 'var(--text-muted)',
+                                                color: 'var(--text-primary)',
                                                 textAlign: 'left',
                                                 textTransform: 'uppercase',
                                                 letterSpacing: '0.05em',
@@ -293,10 +293,10 @@ export default function DashboardPage() {
                                         <td style={{ padding: '12px 20px' }}>
                                             <span className={`badge ${statusBadge(run.status)}`}>{run.status}</span>
                                         </td>
-                                        <td style={{ padding: '12px 20px', fontSize: 13, color: 'var(--text-secondary)' }}>
+                                        <td style={{ padding: '12px 20px', fontSize: 13, color: 'var(--text-primary)' }}>
                                             {new Date(run.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </td>
-                                        <td style={{ padding: '12px 20px', fontSize: 13, color: 'var(--text-secondary)' }}>{run.duration}s</td>
+                                        <td style={{ padding: '12px 20px', fontSize: 13, color: 'var(--text-primary)' }}>{run.duration}s</td>
                                         <td style={{ padding: '12px 20px' }}>
                                             <button className="btn-ghost" style={{ padding: '4px 8px' }}>
                                                 <ArrowUpRight size={14} />
@@ -336,7 +336,7 @@ export default function DashboardPage() {
                                 <div style={{ padding: '24px 12px', textAlign: 'center' }}>
                                     <CheckCircle2 size={24} color="#10b981" style={{ margin: '0 auto 12px', opacity: 0.5 }} />
                                     <p style={{ fontSize: 12, fontWeight: 500 }}>All Systems Healthy</p>
-                                    <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>No logic drift or bias detected.</p>
+                                    <p style={{ fontSize: 11, color: 'var(--text-primary)', marginTop: 4 }}>No logic drift or bias detected.</p>
                                 </div>
                             ) : (
                                 driftAlerts?.map((alert) => (
@@ -351,7 +351,7 @@ export default function DashboardPage() {
                                         }}
                                     >
                                         <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{alert.workflow_name}</p>
-                                        <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 12 }}>
+                                        <p style={{ fontSize: 11, color: 'var(--text-primary)', marginBottom: 12 }}>
                                             {alert.metric} accuracy drop detected.
                                         </p>
                                         <div style={{ display: 'flex', gap: 4 }}>
@@ -382,10 +382,10 @@ export default function DashboardPage() {
                             ].map(s => (
                                 <div key={s.label}>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                                        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{s.label}</span>
+                                        <span style={{ fontSize: 12, color: 'var(--text-primary)' }}>{s.label}</span>
                                         <span style={{ fontSize: 11, fontWeight: 700 }}>{s.status}</span>
                                     </div>
-                                    <div style={{ width: '100%', height: 4, background: 'rgba(255,255,255,0.05)', borderRadius: 2 }}>
+                                    <div style={{ width: '100%', height: 4, background: 'rgba(0,0,0,0.05)', borderRadius: 2 }}>
                                         <div style={{ width: s.status, height: '100%', background: s.color, borderRadius: 2 }} />
                                     </div>
                                 </div>

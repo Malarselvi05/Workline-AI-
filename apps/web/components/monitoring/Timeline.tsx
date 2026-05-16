@@ -28,7 +28,7 @@ export const Timeline = () => {
                                 top: 24, 
                                 bottom: -8, 
                                 width: 2, 
-                                background: 'rgba(255,255,255,0.05)' 
+                                background: 'var(--border-default)' 
                             }} />
                         )}
                         

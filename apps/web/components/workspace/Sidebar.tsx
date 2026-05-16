@@ -172,7 +172,7 @@ export default function Sidebar() {
                         flexShrink: 0,
                     }}
                 >
-                    <Zap size={16} color="white" />
+                    <Zap size={16} color="var(--text-primary)" />
                 </div>
                 {!sidebarCollapsed && (
                     <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.02em' }}>
@@ -406,7 +406,7 @@ export default function Sidebar() {
                                 flexShrink: 0,
                             }}
                         >
-                            <UserIcon size={16} color="white" />
+                            <UserIcon size={16} color="var(--text-primary)" />
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                             <p style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
