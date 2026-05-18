@@ -109,5 +109,20 @@ async def root():
     print(f"[PY] main.py | root | L102: System checking in")
     return {"message": "WorkLine AI API is running", "version": "0.2.0", "host": "localhost", "port": 8000}
 
+@app.get("/health", tags=["Health"])
+async def health_check():
+    from datetime import datetime
+    return {
+        "status": "ok",
+        "service": "WorkLine AI API",
+        "version": "0.3.0",
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "services": {
+            "api": "running",
+            "database": "connected",
+            "frontend": "http://localhost:3000"
+        }
+    }
+
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
