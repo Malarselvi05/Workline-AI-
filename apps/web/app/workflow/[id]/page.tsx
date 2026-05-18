@@ -115,7 +115,7 @@ export default function WorkflowDetailPage() {
             const result = await runWorkflow(workflowId);
             showToast(`Run ${result.mode}: ${result.status}`, 'success');
             // Select the new run immediately and refresh the list
-            if (result.run_id) setSelectedRunId(result.run_id);
+            if ((result as any).run_id) setSelectedRunId((result as any).run_id);
             await refetchRuns();
         } catch (err) {
             showToast(`Run failed: ${err instanceof Error ? err.message : 'Unknown'}`, 'error');

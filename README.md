@@ -75,6 +75,9 @@ The primary interface for end users. Four purpose-built tabs:
 cd apps/api
 
 # Install dependencies (use venv)
+# ⚠️ Prerequisite for OCR: Install Tesseract-OCR on your system
+# Windows: https://github.com/UB-Mannheim/tesseract/wiki (Install to C:\Program Files\Tesseract-OCR\tesseract.exe)
+# Linux: sudo apt-get install tesseract-ocr
 python -m venv .venv
 .\.venv\Scripts\activate
 pip install -r requirements.txt

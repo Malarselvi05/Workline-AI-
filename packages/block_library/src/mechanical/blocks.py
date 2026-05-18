@@ -24,7 +24,7 @@ class DrawingClassifierBlock(BaseBlock):
 
         # Try LLM classification
         try:
-            from app.services.llm import LLMService
+            from app.services.llm import LLMService  # type: ignore
             import json
             llm = LLMService()
             if llm.client:
@@ -101,8 +101,11 @@ class POExtractorBlock(BaseBlock):
         
         # DEBUG: write to file
         import json
-        with open("scratch/po_extractor_debug.json", "w") as f:
-            json.dump(input_data, f, indent=2, default=str)
+        try:
+            with open("scratch/po_extractor_debug.json", "w") as f:
+                json.dump(input_data, f, indent=2, default=str)
+        except Exception:
+            pass
 
         text = ""
         # Priority: look in s_ocr first, then any dict with 'text'
@@ -116,7 +119,7 @@ class POExtractorBlock(BaseBlock):
                     print(f"[BLOCK] POExtractorBlock: Got text from '{key}', length={len(text)}")
                     break
 
-        print(f"[BLOCK] POExtractorBlock: Final text preview={text[:120]!r}")
+        print(f"[BLOCK] POExtractorBlock: Final text preview={text[:200]!r}")
 
         # Try LLM extraction for high accuracy
         try:
@@ -124,7 +127,7 @@ class POExtractorBlock(BaseBlock):
             # Try multiple import paths for the LLM service
             llm = None
             try:
-                from app.services.llm import LLMService
+                from app.services.llm import LLMService  # type: ignore
                 llm = LLMService()
             except ImportError:
                 try:
@@ -132,27 +135,36 @@ class POExtractorBlock(BaseBlock):
                     api_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "apps", "api"))
                     if api_dir not in sys.path:
                         sys.path.insert(0, api_dir)
-                    from app.services.llm import LLMService
+                    from app.services.llm import LLMService  # type: ignore
                     llm = LLMService()
                 except Exception as import_err:
                     print(f"[BLOCK] POExtractorBlock: LLM import failed: {import_err}")
 
             if llm and llm.client:
                 prompt = (
-                    f"Extract the following details from this Purchase Order text:\n"
-                    f"1. PO Number (e.g. PO-2026-SEYON-001)\n"
-                    f"2. Vendor/Client Name (e.g. Precision Dynamics Corp)\n"
-                    f"3. Total Amount (Look for 'TOTAL AMOUNT' - return as a number only like 14526.25)\n"
-                    f"4. List of items as a JSON array\n\n"
-                    f"Document text:\n{text[:2000]}\n\n"
-                    f"Respond with JSON only, no markdown: "
-                    f'{{"po_number": "string", "vendor": "string", "total_amount": 0.0, "items": ["item1"]}}'
+                    f"Extract the following details from this Purchase Order / Invoice text:\n"
+                    f"1. PO Number or Order Number (e.g. PO-001, PO-2026-SEYON-001)\n"
+                    f"2. Vendor/Client Name (the company or person issuing the PO)\n"
+                    f"3. Total Amount (the final TOTAL — return as a number only like 44.00)\n"
+                    f"4. Line items as a JSON array of objects. Each object should have: "
+                    f"\"name\" (item description like 'Brochure Design'), "
+                    f"\"qty\" (quantity as number), "
+                    f"\"rate\" (unit price as number), "
+                    f"\"amount\" (line total as number)\n\n"
+                    f"Document text:\n{text[:3000]}\n\n"
+                    f"Respond with JSON only, no markdown, no code fences:\n"
+                    f'{{"po_number": "string", "vendor": "string", "total_amount": 0.0, '
+                    f'"items": [{{"name": "string", "qty": 1, "rate": 0.0, "amount": 0.0}}]}}'
                 )
                 response = await llm.chat_completion([{"role": "user", "content": prompt}])
                 print(f"[BLOCK] POExtractorBlock: Raw LLM response type={type(response).__name__}, value={str(response)[:300]}")
 
                 data = _json.loads(response) if isinstance(response, str) else response
                 print(f"[BLOCK] POExtractorBlock: Parsed data={data}")
+
+                # Detect LLM error responses (e.g. invalid API key returns {'error': '...'})
+                if "error" in data and "po_number" not in data:
+                    raise ValueError(f"LLM returned error: {data['error']}")
 
                 total_raw = data.get("total_amount", 0.0)
                 if isinstance(total_raw, str):
@@ -161,14 +173,27 @@ class POExtractorBlock(BaseBlock):
                 else:
                     total_amount = float(total_raw) if total_raw else 0.0
 
-                print(f"[BLOCK] POExtractorBlock: AI extracted {data.get('po_number')} with value {total_amount}")
+                # Normalize items: can be list of strings or list of dicts
+                raw_items = data.get("items", [])
+                items_list = []
+                items_names = []
+                for item in raw_items:
+                    if isinstance(item, dict):
+                        items_list.append(item)
+                        items_names.append(item.get("name", str(item)))
+                    elif isinstance(item, str):
+                        items_list.append({"name": item, "qty": 1, "rate": 0, "amount": 0})
+                        items_names.append(item)
+
+                print(f"[BLOCK] POExtractorBlock: AI extracted {data.get('po_number')} with value {total_amount}, {len(items_list)} items")
                 return {
                     "po_number": data.get("po_number", "PO-UNKNOWN"),
                     "vendor": data.get("vendor", "Unknown"),
                     "total_amount": total_amount,
                     "total_value": total_amount,
                     "price": total_amount,
-                    "items": data.get("items", []),
+                    "items": items_names,
+                    "items_detailed": items_list,
                     "confidence": 0.98,
                     "engine": "groq_llm"
                 }
@@ -177,20 +202,58 @@ class POExtractorBlock(BaseBlock):
         except Exception as e:
             print(f"[BLOCK] POExtractorBlock: AI extraction FAILED with error: {type(e).__name__}: {e}")
 
-        # Fallback regex
-        po_match = re.search(r'PO[-\s]*([\w-]+)', text, re.IGNORECASE)
-        amount_match = re.search(r'TOTAL AMOUNT[:\s]+([\d,\.]+)', text, re.IGNORECASE)
+        # ── Enhanced regex fallback ──────────────────────────────────────────
+        po_match = re.search(r'(?:PO|Purchase\s*order)[#\s:]*[-\s]*([\w-]+)', text, re.IGNORECASE)
+        
+        # Try multiple total patterns: "TOTAL AMOUNT:", "TOTAL:", "$XX.XX" at end of line
+        amount_match = (
+            re.search(r'TOTAL\s*(?:AMOUNT)?[:\s]+\$?([\d,\.]+)', text, re.IGNORECASE) or
+            re.search(r'TOTAL[:\s]+\$?([\d,\.]+)', text, re.IGNORECASE)
+        )
         amount_str = amount_match.group(1).replace(',', '') if amount_match else "0"
         fallback_amount = float(amount_str) if amount_str else 0.0
 
-        print(f"[BLOCK] POExtractorBlock: Regex fallback — po={po_match}, amount={fallback_amount}")
+        # Try to extract vendor/client name from common patterns
+        vendor_match = re.search(r'(?:ADDRESS|FROM|VENDOR|CLIENT|BILL\s*TO)[:\s]*\n?\s*([A-Za-z][\w\s]+)', text, re.IGNORECASE)
+        vendor_name = vendor_match.group(1).strip() if vendor_match else "Unknown"
+
+        # Try to parse line items from the text
+        # Pattern: SR/number + description + qty + rate + amount
+        line_item_pattern = re.compile(
+            r'(\d+)\s+'                          # SR No
+            r'([A-Za-z][\w\s]+?)\s+'             # Item description
+            r'(\d+)\s+'                           # Qty
+            r'\$?([\d,\.]+)\s+'                   # Rate
+            r'\$?([\d,\.]+)',                      # Amount
+            re.IGNORECASE
+        )
+        items_found = []
+        items_names = []
+        for m in line_item_pattern.finditer(text):
+            name = m.group(2).strip()
+            qty = int(m.group(3))
+            rate = float(m.group(4).replace(',', ''))
+            amount = float(m.group(5).replace(',', ''))
+            items_found.append({"name": name, "qty": qty, "rate": rate, "amount": amount})
+            items_names.append(name)
+
+        # If we found no structured items, try simpler pattern: numbered list items
+        if not items_names:
+            simple_items = re.findall(r'\d+[.)]\s*(.+?)(?:\n|$)', text)
+            items_names = [item.strip() for item in simple_items if len(item.strip()) > 3]
+
+        if not items_names:
+            items_names = ["General Document"]
+
+        print(f"[BLOCK] POExtractorBlock: Regex fallback — po={po_match}, amount={fallback_amount}, items={items_names}")
         return {
-            "po_number": po_match.group(0) if po_match else "PO-2026-SEYON-001",
-            "vendor": "Precision Dynamics Corp",
+            "po_number": po_match.group(0).strip() if po_match else "PO-UNKNOWN",
+            "vendor": vendor_name,
             "total_amount": fallback_amount,
             "total_value": fallback_amount,
             "price": fallback_amount,
-            "items": ["Titanium Gear Shafts", "High-Temp Ball Bearings"],
+            "items": items_names,
+            "items_detailed": items_found if items_found else [{"name": n, "qty": 1, "rate": 0, "amount": 0} for n in items_names],
             "confidence": 0.6,
             "engine": "regex_fallback"
         }
@@ -275,7 +338,7 @@ class TeamLeaderRecommenderBlock(BaseBlock):
         ]
 
         try:
-            from app.services.llm import LLMService
+            from app.services.llm import LLMService  # type: ignore
             import json
             llm = LLMService()
             if llm.client:
@@ -330,7 +393,7 @@ class DelayPredictorBlock(BaseBlock):
         }
         
         try:
-            from app.services.ml_service import MLService
+            from app.services.ml_service import MLService  # type: ignore
             ml = MLService()
             result = await ml.predict_delay_risk(project_stats)
             print(f"[BLOCK] DelayPredictorBlock.run | Risk output: {result}")

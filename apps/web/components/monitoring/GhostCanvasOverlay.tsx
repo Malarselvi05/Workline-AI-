@@ -44,7 +44,7 @@ export default function GhostCanvasOverlay({ onClose }: Props) {
                 edges: edges,
                 name: workflowDetails.name,
                 description: workflowDetails.description
-            });
+            } as any);
             alert("Master DAG updated successfully!");
         } catch (error) {
             console.error("Save failed", error);

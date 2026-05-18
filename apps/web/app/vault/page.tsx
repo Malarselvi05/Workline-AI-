@@ -39,6 +39,10 @@ interface VaultFile {
     date: string;
     category: string;
     assignedLeader?: string;
+    poNumber?: string;
+    poValue?: number;
+    itemCount?: number;
+    items?: string[];
 }
 
 const MOCK_FILES: VaultFile[] = [
@@ -200,7 +204,11 @@ export default function VaultPage() {
                     size: 'Unknown',
                     date: dateStr,
                     category: 'drawings',
-                    assignedLeader
+                    assignedLeader,
+                    poNumber: results.s_po_extract?.po_number || undefined,
+                    poValue: results.s_po_extract?.total_amount || undefined,
+                    itemCount: results.s_po_extract?.items?.length || undefined,
+                    items: results.s_po_extract?.items || undefined,
                 };
             }).filter(f => f.name !== 'document.pdf'); // filter out the old buggy ones if needed
 
@@ -361,6 +369,26 @@ export default function VaultPage() {
                                             <div style={{ flex: 1, textAlign: viewMode === 'grid' ? 'center' : 'left' }}>
                                                 <h4 style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{file.name}</h4>
                                                 <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{file.type} • {file.size}</p>
+                                                {/* PO details from extraction */}
+                                                {(file.poNumber || file.poValue) && (
+                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6, justifyContent: viewMode === 'grid' ? 'center' : 'flex-start' }}>
+                                                        {file.poNumber && (
+                                                            <span style={{ padding: '2px 6px', background: 'rgba(99,102,241,0.1)', color: '#818cf8', fontSize: 9, fontWeight: 600, borderRadius: 4 }}>
+                                                                {file.poNumber}
+                                                            </span>
+                                                        )}
+                                                        {file.poValue != null && file.poValue > 0 && (
+                                                            <span style={{ padding: '2px 6px', background: 'rgba(16,185,129,0.1)', color: '#34d399', fontSize: 9, fontWeight: 600, borderRadius: 4 }}>
+                                                                ${file.poValue}
+                                                            </span>
+                                                        )}
+                                                        {file.itemCount != null && file.itemCount > 0 && (
+                                                            <span style={{ padding: '2px 6px', background: 'rgba(245,158,11,0.1)', color: '#fbbf24', fontSize: 9, fontWeight: 600, borderRadius: 4 }}>
+                                                                {file.itemCount} items
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                             <div style={{ display: 'flex', gap: 8 }}>
                                                 <button className="btn-icon" style={{ padding: 6 }}><Download size={14} /></button>

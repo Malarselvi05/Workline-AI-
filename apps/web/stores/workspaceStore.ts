@@ -35,6 +35,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     activeTab: 'dashboard',
     ghostMode: false,
     sidebarCollapsed: false,
+    loading: false,
+    installedPacks: [],
     manualAssignments: {},
 
     setUser: (user) => set({ user }),

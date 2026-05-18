@@ -24,29 +24,45 @@ interface SelectedJob {
     docName: string;
     type: string;
     value: string;
+    items: string[];          // extracted line items from PO (e.g. ["Brochure Design", "Web Design"])
     aiHint: string | null;   // recommended_leader from workflow engine, if any
 }
 
 // ── Client-side scoring ────────────────────────────────────────────────────
-function scoreLeader(leader: TeamLeader, docType: string, aiHint: string | null): number {
-    const docWords = docType.toLowerCase().replace(/[_\-/]/g, ' ').split(/\s+/);
+function scoreLeader(leader: TeamLeader, docType: string, items: string[], aiHint: string | null): number {
+    // Build a combined word set from document type + all extracted item descriptions
+    const allText = [docType, ...items].join(' ').toLowerCase().replace(/[_\-/]/g, ' ');
+    const allWords = allText.split(/\s+/).filter(w => w.length > 2);
+
+    // Skill match: how many of the leader's skills overlap with extracted item descriptions
     const matched = leader.skills.filter(skill =>
-        docWords.some(w => w.length > 2 && skill.toLowerCase().includes(w))
+        allWords.some(w => skill.toLowerCase().includes(w))
     ).length;
     const skillScore = leader.skills.length > 0 ? matched / leader.skills.length : 0;
+
+    // Role match: does the leader's role title match any extracted item words?
+    const roleWords = (leader.role || '').toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    const roleMatch = roleWords.some(rw => allWords.some(aw => rw.includes(aw) || aw.includes(rw))) ? 1 : 0;
+
     const workloadPenalty = leader.workload_pct / 200;   // max 0.5
     const aiBoost = aiHint &&
         leader.name.toLowerCase().includes(aiHint.toLowerCase().split(' ')[0])
         ? 0.18 : 0;
-    return Math.min(0.99, Math.max(0.10, 0.42 + skillScore * 0.45 - workloadPenalty + aiBoost));
+
+    // Weighted: 0.15 base + 0.50 skill + 0.20 role - workload + AI
+    return Math.min(0.99, Math.max(0.05, 0.15 + skillScore * 0.50 + roleMatch * 0.20 - workloadPenalty + aiBoost));
 }
 
-function buildReason(rec: Recommendation, docType: string): string {
+function buildReason(rec: Recommendation, docType: string, items: string[]): string {
     const { leader, score, isAiHint } = rec;
     if (isAiHint) return `*Selected based on speciality alignment.*`;
-    if (score >= 0.80) return `Strong skill match for "${docType}" — workload at ${leader.workload_pct}%.`;
-    if (score >= 0.60) return `Moderate match — ${leader.skills.slice(0, 2).join(', ')} overlap with job type.`;
-    return `Partial match — different specialty area. Current workload ${leader.workload_pct}%.`;
+    const matchedSkills = leader.skills.filter(skill =>
+        items.some(item => item.toLowerCase().includes(skill.toLowerCase().split(' ')[0]) ||
+                         skill.toLowerCase().includes(item.toLowerCase().split(' ')[0]))
+    );
+    if (score >= 0.80) return `Strong match — skills [${matchedSkills.join(', ')}] align with items like "${items[0] || docType}". Workload: ${leader.workload_pct}%.`;
+    if (score >= 0.60) return `Moderate match — ${leader.skills.slice(0, 2).join(', ')} partially overlaps with job items.`;
+    return `Low match — specialty area differs from extracted items. Current workload ${leader.workload_pct}%.`;
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -85,6 +101,7 @@ export default function DispatchPage() {
                     docName: r.s_ocr?.filename || 'Document',
                     type: r.s_classify?.category || r.s_classify?.type || 'General',
                     value: r.s_po_extract?.total_amount ? `$${r.s_po_extract.total_amount}` : 'N/A',
+                    items: r.s_po_extract?.items || [],
                     aiHint: r.s_recommender?.recommended_leader || null,
                 });
             }
@@ -110,11 +127,11 @@ export default function DispatchPage() {
             const scored: Recommendation[] = leaders
                 .filter(l => l.is_active)
                 .map(leader => {
-                    const score = scoreLeader(leader, selectedJob.type, selectedJob.aiHint);
+                    const score = scoreLeader(leader, selectedJob.type, selectedJob.items, selectedJob.aiHint);
                     const isAiHint = !!(selectedJob.aiHint &&
                         leader.name.toLowerCase().includes(selectedJob.aiHint.toLowerCase().split(' ')[0]));
                     const rec: Recommendation = { leader, score, reason: '', isAiHint };
-                    rec.reason = buildReason(rec, selectedJob.type);
+                    rec.reason = buildReason(rec, selectedJob.type, selectedJob.items);
                     return rec;
                 })
                 .sort((a, b) => {
@@ -210,6 +227,21 @@ export default function DispatchPage() {
                                         <span style={{ fontSize: 12, fontWeight: 600, color: '#10b981' }}>{selectedJob.value}</span>
                                     </div>
                                 </div>
+
+                                {/* Extracted line items */}
+                                {selectedJob.items.length > 0 && (
+                                    <div style={{ marginTop: 16 }}>
+                                        <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 8, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>Extracted Items</span>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                            {selectedJob.items.map((item, i) => (
+                                                <div key={i} style={{ padding: '6px 10px', background: 'rgba(99,102,241,0.06)', borderRadius: 6, fontSize: 11, color: 'var(--text-secondary)' }}>
+                                                    {item}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
                                 <button className="btn-secondary" style={{ width: '100%', marginTop: 24, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                                     Change Selected Job <ChevronDown size={14} />
                                 </button>

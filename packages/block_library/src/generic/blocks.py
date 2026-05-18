@@ -53,9 +53,97 @@ class OCRBlock(BaseBlock):
 
         filename = file_meta.get("filename", "document.pdf")
         file_type = file_meta.get("file_type", "pdf")
-        print(f"[BLOCK] OCRBlock: Processing file='{filename}' type='{file_type}'")
+        file_b64 = file_meta.get("file_content_base64", None)
+        print(f"[BLOCK] OCRBlock: Processing file='{filename}' type='{file_type}' has_base64={file_b64 is not None}")
 
-        # Special check for our test documents to ensure demo accuracy
+        # ── Step 2: Real OCR on the actual file bytes ────────────────────────
+        if file_b64:
+            try:
+                import base64
+                import io
+                file_bytes = base64.b64decode(file_b64)
+                extracted_text = ""
+
+                lower_ft = file_type.lower()
+
+                # PDF → use pdfplumber (pure-Python, no Tesseract needed)
+                if lower_ft == "pdf":
+                    try:
+                        import pdfplumber  # type: ignore
+                        pdf_stream = io.BytesIO(file_bytes)
+                        with pdfplumber.open(pdf_stream) as pdf:
+                            pages_text = []
+                            for page in pdf.pages:
+                                page_text = page.extract_text() or ""
+                                pages_text.append(page_text)
+                            extracted_text = "\n".join(pages_text)
+                        print(f"[BLOCK] OCRBlock: pdfplumber extracted {len(extracted_text)} chars from {len(pdf.pages) if 'pdf' in dir() else '?'} pages")
+                    except ImportError:
+                        print("[BLOCK] OCRBlock: pdfplumber not installed, will try image fallback")
+                    except Exception as pdf_err:
+                        print(f"[BLOCK] OCRBlock: pdfplumber failed: {pdf_err}")
+
+                # Image → use pytesseract + Pillow
+                if not extracted_text and lower_ft in ("png", "jpg", "jpeg", "bmp", "tiff", "webp", "pdf"):
+                    try:
+                        from PIL import Image
+                        import pytesseract  # type: ignore
+                        import sys
+                        import os
+
+                        # Configure Tesseract path for Windows
+                        if sys.platform == "win32":
+                            tesseract_path = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+                            if os.path.exists(tesseract_path):
+                                pytesseract.pytesseract.tesseract_cmd = tesseract_path
+
+                        if lower_ft == "pdf":
+                            # Convert PDF pages to images for OCR
+                            try:
+                                from pdf2image import convert_from_bytes  # type: ignore
+                                images = convert_from_bytes(file_bytes)
+                                page_texts = []
+                                for img in images:
+                                    page_texts.append(pytesseract.image_to_string(img))
+                                extracted_text = "\n".join(page_texts)
+                                print(f"[BLOCK] OCRBlock: pdf2image+tesseract extracted {len(extracted_text)} chars")
+                            except ImportError:
+                                print("[BLOCK] OCRBlock: pdf2image not installed, skipping image-based PDF OCR")
+                        else:
+                            img = Image.open(io.BytesIO(file_bytes))
+                            extracted_text = pytesseract.image_to_string(img)
+                            print(f"[BLOCK] OCRBlock: pytesseract extracted {len(extracted_text)} chars")
+                    except ImportError as ie:
+                        print(f"[BLOCK] OCRBlock: pytesseract/Pillow not installed: {ie}")
+                    except Exception as ocr_err:
+                        print(f"[BLOCK] OCRBlock: pytesseract failed: {ocr_err}")
+
+                print(f"[BLOCK] OCRBlock: Real OCR produced {len(extracted_text.strip()) if extracted_text else 0} chars.")
+                if extracted_text:
+                    print(f"[OCR RAW OUTPUT]:\n{extracted_text.strip()[:500]}\n")
+
+                if extracted_text and len(extracted_text.strip()) > 10:
+                    print(f"\n{'='*50}\n[OCR EXTRACTED TEXT PREVIEW]:\n{extracted_text.strip()[:1000]}\n{'='*50}\n")
+                    return {
+                        "text": extracted_text.strip(),
+                        "filename": filename,
+                        "confidence": 0.92,
+                        "metadata": {"pages": 1, "engine": "real_ocr", "file_type": file_type}
+                    }
+                else:
+                    print(f"[BLOCK] OCRBlock: Real OCR produced too little text, but we will return it anyway to avoid hallucinations.")
+                    if extracted_text:
+                        return {
+                            "text": extracted_text.strip(),
+                            "filename": filename,
+                            "confidence": 0.5,
+                            "metadata": {"pages": 1, "engine": "real_ocr_poor", "file_type": file_type}
+                        }
+
+            except Exception as e:
+                print(f"[BLOCK] OCRBlock: Base64 decode / OCR pipeline failed: {e}")
+
+        # ── Step 3: Demo hardcoded documents (kept for backward compat) ──────
         lower_filename = filename.lower()
         if lower_filename == "test_document_2.png":
             mock_text = (
@@ -93,60 +181,12 @@ class OCRBlock(BaseBlock):
                 "metadata": {"pages": 1, "engine": "seyon_demo_vision", "file_type": file_type}
             }
 
-        # Step 2: Try Groq LLM to generate realistic OCR text for other files
-        try:
-            import json as _json
-            llm = None
-            try:
-                from app.services.llm import LLMService
-                llm = LLMService()
-            except ImportError:
-                import sys, os
-                api_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "apps", "api"))
-                if api_dir not in sys.path: sys.path.insert(0, api_dir)
-                from app.services.llm import LLMService
-                llm = LLMService()
-
-            if llm and llm.client:
-                prompt = (
-                    f"You are an OCR system processing a file named '{filename}' (type: {file_type}) "
-                    f"submitted to SEYON Engineering for mechanical drawing review. "
-                    f"Generate realistic OCR-extracted text for a mechanical engineering document. "
-                    f"Include: a drawing number, revision letter, title, date, PO reference number, vendor name, and total value. "
-                    f"Format it as raw text lines, no markdown, no explanations."
-                )
-                response = await llm.chat_completion([{"role": "user", "content": prompt}], json_mode=False)
-                text = response if isinstance(response, str) else str(response)
-                print(f"[BLOCK] OCRBlock: LLM OCR extraction successful")
-                return {
-                    "text": text,
-                    "filename": filename,
-                    "metadata": {"pages": 1, "engine": "groq_llm_proxy", "file_type": file_type}
-                }
-        except Exception as e:
-            print(f"[BLOCK] OCRBlock: LLM failed ({e}), using filename-based mock")
-
-        # Step 3: Deterministic fallback — uses filename so output differs per document
-        import hashlib
-        file_hash = int(hashlib.md5(filename.encode()).hexdigest(), 16)
-        po_num = file_hash % 9999
-        part_num = file_hash % 999
-        mock_text = (
-            f"DRAWING NO: DWG-{filename[:6].upper().replace('.','')}-REV-A\n"
-            f"TITLE: MECHANICAL ASSEMBLY - SEYON ENGINEERING\n"
-            f"DATE: 2026-04-19\n"
-            f"PO REF: PO-2026-{po_num:04d}\n"
-            f"VENDOR: SEYON MANUFACTURING SOLUTIONS\n"
-            f"TOTAL VALUE: INR 1,{file_hash % 90 + 10},000\n"
-            f"PART NO: ASSY-{part_num:03d}\n"
-            f"DESCRIPTION: GENERAL ASSEMBLY DRAWING FOR QA REVIEW"
-        )
-        await asyncio.sleep(1.0)
-        print(f"[BLOCK] OCRBlock: Deterministic mock complete")
+        # ── Step 4 & 5 Disabled to prevent hallucination ──
+        print("[BLOCK] OCRBlock: Hardcoded fallbacks bypassed to prevent fake data.")
         return {
-            "text": mock_text,
+            "text": "OCR Failed to extract any text.",
             "filename": filename,
-            "metadata": {"pages": 1, "engine": "filename_mock", "file_type": file_type}
+            "metadata": {"pages": 1, "engine": "failed", "file_type": file_type}
         }
 
 
@@ -163,7 +203,7 @@ class ClassifyBlock(BaseBlock):
         logger.info(f"Classifying text: {text[:50]}... {'(SANDBOX)' if self.is_sandbox else ''}")
         
         try:
-            from app.services.ml_service import MLService
+            from app.services.ml_service import MLService  # type: ignore
             ml = MLService()
             result = await ml.classify_document(text)
             print(f"[BLOCK] ClassifyBlock.run | ML result: {result}")
@@ -172,7 +212,7 @@ class ClassifyBlock(BaseBlock):
             logger.warning(f"MLService classification failed: {e}. Falling back to LLM/Mock.")
 
         try:
-            from app.services.llm import LLMService
+            from app.services.llm import LLMService  # type: ignore
             llm = LLMService()
             if llm.client:
                 categories = self.config.get("categories", ["drawing", "specification", "calculation", "MSDS"])
@@ -254,7 +294,7 @@ class ParseBlock(BaseBlock):
         if "fields" in self.config:
             print(f"[BLOCK] ParseBlock.run | Custom fields requested: {self.config['fields']}. Trying LLM...")
             try:
-                from app.services.llm import LLMService
+                from app.services.llm import LLMService  # type: ignore
                 llm = LLMService()
                 result = await llm.extract_structured_data(text, self.config["fields"])
                 print(f"[BLOCK] ParseBlock.run | LLM extraction result: {result}")
@@ -309,7 +349,7 @@ class RouterBlock(BaseBlock):
         print(f"[BLOCK] RouterBlock.run | Evaluating routing condition: '{self.config.get('condition', 'True')}'")
         condition = self.config.get("condition", "True")
         try:
-            from app.services.llm import LLMService
+            from app.services.llm import LLMService  # type: ignore
             llm = LLMService()
             prompt = f"Given this data: {input_data}, does it satisfy this condition: {condition}? Respond with JSON: {{'result': true/false}}"
             res = await llm.chat_completion([{"role": "user", "content": prompt}])

@@ -10,10 +10,13 @@ import {
     Thermometer,
     Clock,
     AlertCircle,
-    CheckCircle2
+    CheckCircle2,
+    RefreshCw
 } from 'lucide-react';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { getWorkflowRuns } from '@/lib/api';
+import { SEYON_WORKFLOW_ID } from '@/lib/seyon-config';
 
 interface Job {
     id: string;
@@ -23,6 +26,8 @@ interface Job {
     status: 'In-Progress' | 'Pending' | 'Completed' | 'Error';
     material: string;
     thickness: string;
+    assignedLeader?: string;
+    items?: string[];
 }
 
 const MOCK_JOBS: Job[] = [
@@ -31,13 +36,65 @@ const MOCK_JOBS: Job[] = [
     { id: 'J-103', po: 'PO-2024-880', machine: 'Manual Folding M/C', progress: 100, status: 'Completed', material: '1.5mm Alum', thickness: '1.5mm' },
 ];
 
+const MACHINE_POOL = ['CNC Brake Press #1', 'CNC Brake Press #2', 'CNC Brake Press #4', 'Manual Folding M/C', 'Hydraulic Press #3'];
+
 export default function BendingPage() {
     const { setActiveTab, ghostMode, setGhostMode } = useWorkspaceStore();
+    const [jobs, setJobs] = useState<Job[]>(MOCK_JOBS);
     const [selectedJob, setSelectedJob] = useState<Job>(MOCK_JOBS[0]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         setActiveTab('bending');
+        fetchLiveJobs();
     }, [setActiveTab]);
+
+    const fetchLiveJobs = async () => {
+        try {
+            setLoading(true);
+            const runs = await getWorkflowRuns(SEYON_WORKFLOW_ID);
+            const sorted = runs.sort((a, b) =>
+                new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
+            );
+            
+            if (sorted.length > 0) {
+                const manualAssignments = useWorkspaceStore.getState().manualAssignments;
+                const liveJobs: Job[] = sorted.map((run, idx) => {
+                    const r = run.logs?.results || {};
+                    const po = r.s_po_extract?.po_number || `PO-RUN-${run.id}`;
+                    const assignedLeader = manualAssignments[run.id.toString()] || r.s_recommender?.recommended_leader || undefined;
+                    const items = r.s_po_extract?.items || [];
+                    
+                    // Derive status from workflow run status
+                    let status: Job['status'] = 'Pending';
+                    let progress = 0;
+                    if (run.status === 'completed') { status = 'Completed'; progress = 100; }
+                    else if (run.status === 'running') { status = 'In-Progress'; progress = 50 + Math.floor(Math.random() * 30); }
+                    else if (run.status === 'failed') { status = 'Error'; progress = 0; }
+                    else if (run.status === 'pending') { status = 'Pending'; progress = 0; }
+                    
+                    return {
+                        id: `J-${run.id}`,
+                        po,
+                        machine: MACHINE_POOL[idx % MACHINE_POOL.length],
+                        progress,
+                        status,
+                        material: items.length > 0 ? items[0] : 'General',
+                        thickness: r.s_po_extract?.total_amount ? `$${r.s_po_extract.total_amount}` : 'N/A',
+                        assignedLeader,
+                        items,
+                    };
+                });
+                setJobs(liveJobs);
+                setSelectedJob(liveJobs[0]);
+            }
+        } catch (err) {
+            console.error('Failed to fetch live jobs for bending', err);
+            // Falls back to MOCK_JOBS set in initial state
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <ErrorBoundary>
@@ -95,7 +152,7 @@ export default function BendingPage() {
                     <div style={{ width: 380, display: 'flex', flexDirection: 'column', gap: 20 }}>
                         <h2 style={{ fontSize: 16, fontWeight: 700 }}>Active Production Queue</h2>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            {MOCK_JOBS.map(job => (
+                            {jobs.map(job => (
                                 <div 
                                     key={job.id} 
                                     onClick={() => setSelectedJob(job)}

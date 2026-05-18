@@ -57,11 +57,29 @@ export default function IntakePage() {
         if (droppedFile) setFile(droppedFile);
     };
 
+    const readFileAsBase64 = (f: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const result = reader.result as string;
+                // Remove the data:*/*;base64, prefix — send raw base64
+                const base64 = result.split(',')[1] || result;
+                resolve(base64);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(f);
+        });
+    };
+
     const runAI = async () => {
         if (!file) return;
         setProcessing(true);
         try {
             const token = localStorage.getItem('access_token');
+
+            // Read the actual file content as base64 so the backend OCR can process it
+            const fileBase64 = await readFileAsBase64(file);
+
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/workflows/${SEYON_WORKFLOW_ID}/runs`, {
                 method: 'POST',
                 headers: {
@@ -72,7 +90,8 @@ export default function IntakePage() {
                     initial_input: {
                         filename: file.name,
                         file_type: file.name.split('.').pop() || 'pdf',
-                        uploaded_at: new Date().toISOString()
+                        uploaded_at: new Date().toISOString(),
+                        file_content_base64: fileBase64
                     }
                 })
             });
@@ -279,13 +298,13 @@ export default function IntakePage() {
                             {!file && (
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                                     <div className="glass-card" style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-                                        <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justify: 'center' }}>
+                                        <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                             <CheckCircle2 size={16} color="#10b981" />
                                         </div>
                                         <span style={{ fontSize: 12, fontWeight: 500 }}>OCR Enabled</span>
                                     </div>
                                     <div className="glass-card" style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-                                        <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justify: 'center' }}>
+                                        <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                             <Search size={16} color="var(--accent-primary)" />
                                         </div>
                                         <span style={{ fontSize: 12, fontWeight: 500 }}>Auto-Classifier</span>
