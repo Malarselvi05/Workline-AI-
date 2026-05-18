@@ -22,6 +22,7 @@ import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import {
     getWorkflowRuns,
+    getRunDetail,
     listTeamLeaders,
     createTeamLeader,
     updateTeamLeader,
@@ -83,6 +84,10 @@ export default function VaultPage() {
     const [tagInput, setTagInput] = useState('');
     const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
     const [saving, setSaving] = useState(false);
+
+    // ── File preview & actions state ───────────────────────────────────────
+    const [previewFile, setPreviewFile] = useState<VaultFile | null>(null);
+    const [openMenuId, setOpenMenuId] = useState<number | null>(null);
 
     useEffect(() => {
         setActiveTab('vault');
@@ -161,17 +166,31 @@ export default function VaultPage() {
             setLoading(true);
             const runs = await getWorkflowRuns(SEYON_WORKFLOW_ID);
             const sortedRuns = runs.sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
-            
-            const liveFiles: VaultFile[] = sortedRuns.map(run => {
+
+            // Fetch node-level detail for all runs in parallel
+            // so we can read s_recommender output even for awaiting_review runs
+            // (run.logs.results may be empty mid-run, but node_states always has the output)
+            const details = await Promise.allSettled(
+                sortedRuns.map(r => getRunDetail(r.id))
+            );
+
+            const liveFiles: VaultFile[] = sortedRuns.map((run, idx) => {
                 const results = run.logs?.results || {};
-                
+
+                // Try node_states first (most reliable), fall back to run.logs.results
+                const detailResult = details[idx];
+                const nodeStates = detailResult.status === 'fulfilled' ? detailResult.value.node_states : [];
+                const recommenderNode = nodeStates.find((n: any) => n.node_id === 's_recommender');
+                const recommenderFromNodes = recommenderNode?.output_json?.recommended_leader as string | undefined;
+                const recommenderFromLogs  = (results['s_recommender'] as any)?.recommended_leader as string | undefined;
+
                 // Get raw type from the ML classification block
                 const rawType = (results.s_classify?.type || 'unknown').toLowerCase();
                 const filename = results.s_ocr?.filename || `Processed_Document_RUN${run.id}`;
-                
+
                 // Map the backend raw type to the frontend display names
                 let mappedType = 'All Documents';
-                
+
                 // Demo Overrides for exact UI correctness based on filename
                 if (filename.toLowerCase().includes('test_document')) {
                     mappedType = 'Purchase Order';
@@ -188,15 +207,19 @@ export default function VaultPage() {
                 } else if (results.s_po_extract?.total_amount) {
                     mappedType = 'Purchase Order';
                 }
-                
+
                 // Format the relative time
                 const elapsedMs = new Date().getTime() - new Date(run.started_at).getTime();
                 const mins = Math.floor(elapsedMs / 60000);
                 const dateStr = mins < 1 ? 'Just now' : mins < 60 ? `${mins}m ago` : `${Math.floor(mins/60)}h ago`;
-                
-                // Prioritize manual assignment from the store over the AI top recommendation
+
+                // ── Derive assigned leader ─────────────────────────────────────────────
                 const manualAssignments = useWorkspaceStore.getState().manualAssignments;
-                const assignedLeader = manualAssignments[run.id.toString()] || results.s_recommender?.recommendations?.[0]?.name || undefined;
+                const assignedLeader =
+                    manualAssignments[run.id.toString()] ||
+                    recommenderFromNodes ||
+                    recommenderFromLogs ||
+                    undefined;
 
                 return {
                     id: run.id,
@@ -211,7 +234,7 @@ export default function VaultPage() {
                     itemCount: results.s_po_extract?.items?.length || undefined,
                     items: results.s_po_extract?.items || undefined,
                 };
-            }).filter(f => f.name !== 'document.pdf'); // filter out the old buggy ones if needed
+            }).filter(f => f.name !== 'document.pdf');
 
             setFiles(liveFiles.length > 0 ? liveFiles : MOCK_FILES);
         } catch (err) {
@@ -220,6 +243,18 @@ export default function VaultPage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    // ── Handlers ───────────────────────────────────────────────────────────
+    const handleDownload = (file: VaultFile) => {
+        // Files are stored as run metadata — open the run detail page as best effort
+        const url = `/seyon?run=${file.id}`;
+        window.open(url, '_blank');
+    };
+
+    const handleRemoveDuplicate = (fileId: number) => {
+        setFiles(prev => prev.filter(f => f.id !== fileId));
+        setOpenMenuId(null);
     };
 
     return (
@@ -373,13 +408,20 @@ export default function VaultPage() {
                                     gap: 16
                                 }}>
                                     {filtered.map(file => (
-                                        <div key={file.id} className="glass-card" style={{
-                                            padding: 16, display: 'flex',
-                                            flexDirection: viewMode === 'grid' ? 'column' : 'row',
-                                            alignItems: viewMode === 'grid' ? 'center' : 'center',
-                                            gap: 12,
-                                            position: 'relative'
-                                        }}>
+                                        <div
+                                            key={file.id}
+                                            className="glass-card"
+                                            style={{
+                                                padding: 16, display: 'flex',
+                                                flexDirection: viewMode === 'grid' ? 'column' : 'row',
+                                                alignItems: viewMode === 'grid' ? 'center' : 'center',
+                                                gap: 12,
+                                                position: 'relative',
+                                                cursor: 'pointer',
+                                                transition: 'box-shadow 0.15s'
+                                            }}
+                                            onClick={() => setPreviewFile(file)}
+                                        >
                                             {/* VAULT-2: Duplicate badge */}
                                             {isDuplicate(file.name) && (
                                                 <span style={{
@@ -418,9 +460,54 @@ export default function VaultPage() {
                                                     </div>
                                                 )}
                                             </div>
-                                            <div style={{ display: 'flex', gap: 8 }}>
-                                                <button className="btn-icon" style={{ padding: 6 }}><Download size={14} /></button>
-                                                <button className="btn-icon" style={{ padding: 6 }}><MoreVertical size={14} /></button>
+                                            <div style={{ display: 'flex', gap: 8, position: 'relative' }}>
+                                                {/* Download button */}
+                                                <button
+                                                    className="btn-icon"
+                                                    style={{ padding: 6 }}
+                                                    title="Download / View Run"
+                                                    onClick={e => { e.stopPropagation(); handleDownload(file); }}
+                                                >
+                                                    <Download size={14} />
+                                                </button>
+                                                {/* 3-dots menu */}
+                                                <button
+                                                    className="btn-icon"
+                                                    style={{ padding: 6 }}
+                                                    onClick={e => { e.stopPropagation(); setOpenMenuId(openMenuId === file.id ? null : file.id); }}
+                                                >
+                                                    <MoreVertical size={14} />
+                                                </button>
+                                                {openMenuId === file.id && (
+                                                    <div style={{
+                                                        position: 'absolute', top: 32, right: 0, zIndex: 50,
+                                                        background: 'var(--bg-elevated, var(--bg-secondary))',
+                                                        border: '1px solid var(--border-default)',
+                                                        borderRadius: 8, padding: 4, minWidth: 160,
+                                                        boxShadow: '0 8px 24px rgba(0,0,0,0.3)'
+                                                    }}>
+                                                        <button
+                                                            onClick={e => { e.stopPropagation(); setPreviewFile(file); setOpenMenuId(null); }}
+                                                            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px', background: 'none', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12, color: 'var(--text-primary)', textAlign: 'left' }}
+                                                        >
+                                                            🔍 Preview Document
+                                                        </button>
+                                                        {isDuplicate(file.name) && (
+                                                            <button
+                                                                onClick={e => { e.stopPropagation(); handleRemoveDuplicate(file.id); }}
+                                                                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px', background: 'none', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12, color: '#f87171', textAlign: 'left' }}
+                                                            >
+                                                                <Trash2 size={12} /> Remove Duplicate
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            onClick={e => { e.stopPropagation(); handleRemoveDuplicate(file.id); }}
+                                                            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px', background: 'none', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12, color: '#f87171', textAlign: 'left' }}
+                                                        >
+                                                            <Trash2 size={12} /> Remove from Vault
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     ))}
@@ -549,81 +636,116 @@ export default function VaultPage() {
                                         })}
                                     </div>
                                 )}
-
-                                {/* ── Add / Edit Modal ─────────────────────────── */}
-                                {showModal && (
-                                    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <div id="employee-modal" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 16, padding: 32, width: 480, maxWidth: '95vw', boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                                                <h3 style={{ fontSize: 16, fontWeight: 700 }}>{editTarget ? 'Edit Employee' : 'Add Employee'}</h3>
-                                                <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
-                                            </div>
-
-                                            {/* Name */}
-                                            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Name *</label>
-                                            <input
-                                                id="employee-name-input"
-                                                value={form.name}
-                                                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                                                placeholder="e.g. Arun Kumar"
-                                                style={{ width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-default)', borderRadius: 8, color: 'white', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 16 }}
-                                            />
-
-                                            {/* Role */}
-                                            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Role</label>
-                                            <input
-                                                id="employee-role-input"
-                                                value={form.role ?? ''}
-                                                onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
-                                                placeholder="e.g. Senior Mechanical Lead"
-                                                style={{ width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-default)', borderRadius: 8, color: 'white', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 16 }}
-                                            />
-
-                                            {/* Skills tag input */}
-                                            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Skills <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(type & press Enter)</span></label>
-                                            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                                                <input
-                                                    id="skill-tag-input"
-                                                    value={tagInput}
-                                                    onChange={e => setTagInput(e.target.value)}
-                                                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
-                                                    placeholder="e.g. General Assembly"
-                                                    style={{ flex: 1, padding: '10px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-default)', borderRadius: 8, color: 'white', fontSize: 13, outline: 'none' }}
-                                                />
-                                                <button onClick={addTag} style={{ padding: '10px 14px', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 8, color: '#818cf8', cursor: 'pointer', fontSize: 13 }}>Add</button>
-                                            </div>
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, minHeight: 28, marginBottom: 24 }}>
-                                                {(form.skills ?? []).map((skill, si) => {
-                                                    const c = SKILL_COLORS[si % SKILL_COLORS.length];
-                                                    return (
-                                                        <span key={skill} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 10px', background: c.bg, color: c.color, fontSize: 11, fontWeight: 600, borderRadius: 100 }}>
-                                                            {skill}
-                                                            <button onClick={() => removeTag(skill)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.color, padding: 0, display: 'flex', lineHeight: 1 }}><X size={11} /></button>
-                                                        </span>
-                                                    );
-                                                })}
-                                            </div>
-
-                                            {/* Footer */}
-                                            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                                                <button onClick={() => setShowModal(false)} style={{ padding: '9px 18px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border-default)', borderRadius: 8, color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
-                                                <button
-                                                    id="save-employee-btn"
-                                                    onClick={saveLeader}
-                                                    disabled={saving || !form.name.trim()}
-                                                    style={{ padding: '9px 20px', background: saving ? 'rgba(99,102,241,0.5)' : 'var(--accent-primary)', border: 'none', borderRadius: 8, color: 'white', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer' }}
-                                                >
-                                                    {saving ? 'Saving…' : editTarget ? 'Save Changes' : 'Create Employee'}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         )}
                     </div>
                 </div>
             </div>
+
+            {/* ── Add / Edit Employee Modal (hoisted to top level) ── */}
+            {showModal && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div id="employee-modal" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 16, padding: 32, width: 480, maxWidth: '95vw', boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                            <h3 style={{ fontSize: 16, fontWeight: 700 }}>{editTarget ? 'Edit Employee' : 'Add Employee'}</h3>
+                            <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
+                        </div>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Name *</label>
+                        <input id="employee-name-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Arun Kumar" style={{ width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-default)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 16 }} />
+                        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Role</label>
+                        <input id="employee-role-input" value={form.role ?? ''} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} placeholder="e.g. Senior Mechanical Lead" style={{ width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-default)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 16 }} />
+                        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Skills <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(type &amp; press Enter)</span></label>
+                        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                            <input id="skill-tag-input" value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }} placeholder="e.g. General Assembly" style={{ flex: 1, padding: '10px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-default)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, outline: 'none' }} />
+                            <button onClick={addTag} style={{ padding: '10px 14px', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 8, color: '#818cf8', cursor: 'pointer', fontSize: 13 }}>Add</button>
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, minHeight: 28, marginBottom: 24 }}>
+                            {(form.skills ?? []).map((skill, si) => {
+                                const c = SKILL_COLORS[si % SKILL_COLORS.length];
+                                return (
+                                    <span key={skill} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 10px', background: c.bg, color: c.color, fontSize: 11, fontWeight: 600, borderRadius: 100 }}>
+                                        {skill}
+                                        <button onClick={() => removeTag(skill)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.color, padding: 0, display: 'flex', lineHeight: 1 }}><X size={11} /></button>
+                                    </span>
+                                );
+                            })}
+                        </div>
+                        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                            <button onClick={() => setShowModal(false)} style={{ padding: '9px 18px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border-default)', borderRadius: 8, color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+                            <button id="save-employee-btn" onClick={saveLeader} disabled={saving || !form.name.trim()} style={{ padding: '9px 20px', background: saving ? 'rgba(99,102,241,0.5)' : 'var(--accent-primary)', border: 'none', borderRadius: 8, color: 'white', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer' }}>
+                                {saving ? 'Saving…' : editTarget ? 'Save Changes' : 'Create Employee'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Document Preview Modal ─────────────────────────────────── */}
+            {previewFile && (
+                <div
+                    style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+                    onClick={() => setPreviewFile(null)}
+                >
+                    <div
+                        style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 16, width: '100%', maxWidth: 700, maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 32px 80px rgba(0,0,0,0.6)' }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <File size={18} color="var(--accent-primary)" />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <h3 style={{ fontSize: 14, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{previewFile.name}</h3>
+                                <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{previewFile.type} • {previewFile.size} • {previewFile.date}</p>
+                            </div>
+                            <button onClick={() => handleDownload(previewFile)} style={{ padding: '6px 12px', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 8, color: '#818cf8', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <Download size={13} /> Open
+                            </button>
+                            <button onClick={() => setPreviewFile(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}><X size={18} /></button>
+                        </div>
+
+                        {/* PO details */}
+                        <div style={{ padding: 20, overflowY: 'auto', flex: 1 }}>
+                            {previewFile.poNumber || previewFile.poValue ? (
+                                <>
+                                    <h4 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16 }}>Extracted PO Data</h4>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+                                        {[
+                                            { label: 'PO Number', val: previewFile.poNumber ?? '—' },
+                                            { label: 'Total Value', val: previewFile.poValue ? `$${previewFile.poValue.toLocaleString()}` : '—' },
+                                            { label: 'Document Type', val: previewFile.type },
+                                            { label: 'Processed', val: previewFile.date },
+                                        ].map(({ label, val }) => (
+                                            <div key={label} style={{ padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '1px solid var(--border-default)' }}>
+                                                <p style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</p>
+                                                <p style={{ fontSize: 14, fontWeight: 600 }}>{val}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {previewFile.items && previewFile.items.length > 0 && (
+                                        <>
+                                            <h4 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Line Items ({previewFile.items.length})</h4>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                                {previewFile.items.map((item, i) => (
+                                                    <div key={i} style={{ padding: '10px 14px', background: 'rgba(99,102,241,0.04)', borderRadius: 8, border: '1px solid rgba(99,102,241,0.12)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                        <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 20 }}>{i + 1}.</span>
+                                                        {item}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </>
+                            ) : (
+                                <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
+                                    <File size={48} style={{ margin: '0 auto 16px', opacity: 0.3 }} />
+                                    <p style={{ fontSize: 14, marginBottom: 8 }}>No extracted data available for preview.</p>
+                                    <p style={{ fontSize: 12 }}>This document was processed without PO extraction. Click <strong>Open</strong> above to view it in the run detail.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </ErrorBoundary>
     );
 }
