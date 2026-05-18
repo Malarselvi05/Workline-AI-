@@ -22,6 +22,7 @@ if api_dir not in sys.path:
     sys.path.insert(0, api_dir)
 
 try:
+    # pyrefly: ignore [missing-import]
     from workflow_engine.engine import WorkflowEngine
 except ImportError:
     # Fallback for different execution contexts

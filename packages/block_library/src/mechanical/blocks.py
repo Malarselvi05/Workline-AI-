@@ -329,13 +329,40 @@ class TeamLeaderRecommenderBlock(BaseBlock):
                     po_value = str(val.get("total_value", "Unknown"))
                     vendor = val.get("vendor", "Unknown")
 
-        # SEYON team roster — update these names to real SEYON staff for production
-        team_roster = [
-            {"name": "Arun Kumar",  "role": "Senior Mechanical Lead",  "speciality": "General Assembly, Sub-Assembly"},
-            {"name": "Priya Nair",  "role": "Drawing Review Engineer",  "speciality": "Part Drawing, Schematic"},
-            {"name": "Suresh Babu", "role": "Procurement Coordinator",  "speciality": "BOM List, PO Verification"},
-            {"name": "Meena Raj",   "role": "QA Lead",                  "speciality": "All types — QA sign-off"},
-        ]
+        # ── Load real team leaders from DB ────────────────────────────────────
+        team_roster = []
+        try:
+            import os, sys
+            api_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "apps", "api"))
+            if api_dir not in sys.path:
+                sys.path.insert(0, api_dir)
+            from app.db.session import SessionLocal  # type: ignore
+            from app.models.models import TeamLeader  # type: ignore
+            db = SessionLocal()
+            try:
+                leaders_db = db.query(TeamLeader).filter(TeamLeader.is_active == True).all()
+                for tl in leaders_db:
+                    skills = tl.skills if isinstance(tl.skills, list) else []
+                    team_roster.append({
+                        "name": tl.name,
+                        "role": tl.role or "Team Leader",
+                        "speciality": ", ".join(skills) if skills else "General"
+                    })
+                print(f"[BLOCK] TeamLeaderRecommenderBlock: Loaded {len(team_roster)} leaders from DB: {[t['name'] for t in team_roster]}")
+            finally:
+                db.close()
+        except Exception as db_err:
+            print(f"[BLOCK] TeamLeaderRecommenderBlock: DB load failed ({db_err}), using hardcoded fallback")
+
+        # Fallback only if DB is empty or unreachable
+        if not team_roster:
+            print("[BLOCK] TeamLeaderRecommenderBlock: No DB leaders found — using built-in fallback roster")
+            team_roster = [
+                {"name": "Arun Kumar",  "role": "Senior Mechanical Lead",  "speciality": "General Assembly, Sub-Assembly"},
+                {"name": "Priya Nair",  "role": "Drawing Review Engineer",  "speciality": "Part Drawing, Schematic"},
+                {"name": "Suresh Babu", "role": "Procurement Coordinator",  "speciality": "BOM List, PO Verification"},
+                {"name": "Meena Raj",   "role": "QA Lead",                  "speciality": "All types — QA sign-off"},
+            ]
 
         try:
             from app.services.llm import LLMService  # type: ignore
@@ -363,21 +390,19 @@ class TeamLeaderRecommenderBlock(BaseBlock):
         except Exception as e:
             print(f"[BLOCK] TeamLeaderRecommenderBlock: LLM failed ({e}), using rule-based fallback")
 
-        # Rule-based fallback — deterministic, no random
-        rule_map = {
-            "General Assembly": "Arun Kumar",
-            "Sub-Assembly": "Arun Kumar",
-            "Part Drawing": "Priya Nair",
-            "Schematic": "Priya Nair",
-            "BOM List": "Suresh Babu",
-        }
-        leader = rule_map.get(drawing_type, "Meena Raj")
+        # Rule-based fallback — pick first leader whose skills match the drawing type
+        matched = next(
+            (t for t in team_roster if drawing_type.lower() in t["speciality"].lower()),
+            team_roster[0]
+        )
+        leader = matched["name"]
         await asyncio.sleep(0.5)
         return {
             "recommended_leader": leader,
-            "reasoning": f"{leader} has the most relevant experience for {drawing_type} document review at SEYON.",
+            "reasoning": f"{leader} has the most relevant experience for {drawing_type} document review.",
             "available": True
         }
+
 
 class DelayPredictorBlock(BaseBlock):
     async def run(self, input_data: Any) -> Any:

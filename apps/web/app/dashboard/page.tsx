@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
     Activity,
     CheckCircle2,
@@ -16,17 +17,16 @@ import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { getDashboardSummary, getRecentRuns, getDriftAlerts, runSimulation } from '@/lib/api';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { XAIChart } from '@/components/monitoring/XAIChart';
+import { AssignmentPieChart } from '@/components/monitoring/AssignmentPieChart';
 import { Timeline } from '@/components/monitoring/Timeline';
 import GhostCanvasOverlay from '@/components/monitoring/GhostCanvasOverlay';
 
 const statusBadge = (status: string) => {
-  console.log("[JS] page.tsx | statusBadge | L17: Logic flowing");
-  console.log("[JS] page.tsx | statusBadge | L17: Antigravity active");
     switch (status) {
         case 'completed': return 'badge-success';
         case 'failed': return 'badge-danger';
         case 'running': return 'badge-info';
-        case 'awaiting_review': return 'badge-warning';
+        case 'awaiting_review': return 'badge-info'; // DASH-2: indigo, not yellow
         default: return 'badge-neutral';
     }
 };
@@ -40,6 +40,7 @@ const LoadingSkeleton = () => (
 
 export default function DashboardPage() {
     const { setActiveTab, user, ghostMode, setGhostMode } = useWorkspaceStore();
+    const router = useRouter(); // DASH-3
 
     useEffect(() => {
         setActiveTab('dashboard');
@@ -82,33 +83,40 @@ export default function DashboardPage() {
         queryFn: getDriftAlerts,
     });
 
-    // ── Pre-computing KPI values for display ────────────────────────────────
+    // ── DASH-1: Use demo fallback when DB has no data ──────────────────────
+    // Real data takes priority; demo values only shown when total_runs_week === 0
+    const useDemoData = !summaryLoading && (!summary || summary.total_runs_week === 0);
+
+    // FEAT-2: Derive pie chart counts from recentRuns
+    const pieSuccess = recentRuns?.filter(r => r.status === 'completed').length ?? 0;
+    const pieFailed  = recentRuns?.filter(r => r.status === 'failed').length ?? 0;
+    const piePending = recentRuns?.filter(r => r.status === 'awaiting_review' || r.status === 'running').length ?? 0;
 
     const KPI_CARDS = [
         { 
             label: 'Docs Processed', 
-            value: summary?.total_runs_week ?? '47', 
+            value: useDemoData ? 15 : (summary?.total_runs_week ?? 0), 
             change: '+12%', 
             icon: Activity, 
             color: '#6366f1' 
         },
         { 
             label: 'AI Accuracy', 
-            value: summary ? `${summary.success_rate}%` : '94%', 
+            value: useDemoData ? '94%' : `${summary?.success_rate ?? 0}%`, 
             change: '+2%', 
             icon: CheckCircle2, 
             color: '#10b981' 
         },
         { 
             label: 'Avg Assignment Time', 
-            value: summary ? `${summary.avg_duration}s` : '2.3m', 
+            value: useDemoData ? '2.3m' : `${summary?.avg_duration ?? 0}s`, 
             change: '-15%', 
             icon: Clock, 
             color: '#06b6d4' 
         },
         { 
             label: 'Active Alerts', 
-            value: summary?.active_drift_alerts ?? '2', 
+            value: useDemoData ? 2 : (summary?.active_drift_alerts ?? 0), 
             change: '', 
             icon: AlertTriangle, 
             color: '#f59e0b' 
@@ -243,7 +251,11 @@ export default function DashboardPage() {
                         }}
                     >
                         <h2 style={{ fontSize: 15, fontWeight: 600 }}>Recent Runs</h2>
-                        <button className="btn-ghost" style={{ fontSize: 12 }}>
+                        <button
+                            className="btn-ghost"
+                            style={{ fontSize: 12 }}
+                            onClick={() => router.push('/seyon')}  // DASH-3
+                        >
                             View All <ArrowUpRight size={12} />
                         </button>
                     </div>
@@ -366,6 +378,14 @@ export default function DashboardPage() {
 
                     <div className="glass-card animate-fade-in" style={{ padding: '20px' }}>
                         <XAIChart />
+                    </div>
+
+                    <div className="glass-card animate-fade-in" style={{ padding: '20px' }}>
+                        <AssignmentPieChart
+                            success={pieSuccess}
+                            failed={pieFailed}
+                            pending={piePending}
+                        />
                     </div>
 
                     <div className="glass-card animate-fade-in" style={{ padding: '20px' }}>

@@ -43,6 +43,7 @@ export default function BendingPage() {
     const [jobs, setJobs] = useState<Job[]>(MOCK_JOBS);
     const [selectedJob, setSelectedJob] = useState<Job>(MOCK_JOBS[0]);
     const [loading, setLoading] = useState(true);
+    const [toast, setToast] = useState<string | null>(null); // BEND-1
 
     useEffect(() => {
         setActiveTab('bending');
@@ -96,6 +97,20 @@ export default function BendingPage() {
         }
     };
 
+    // BEND-1: Update job progress and show toast feedback
+    const handleUpdateStatus = () => {
+        setJobs(prev => prev.map(job => {
+            if (job.id !== selectedJob.id) return job;
+            const newProgress = Math.min(job.progress + 10, 100);
+            const newStatus: Job['status'] = newProgress >= 100 ? 'Completed' : job.status === 'Pending' ? 'In-Progress' : job.status;
+            const updated = { ...job, progress: newProgress, status: newStatus };
+            setSelectedJob(updated);
+            return updated;
+        }));
+        setToast('Production status updated successfully!');
+        setTimeout(() => setToast(null), 2000);
+    };
+
     return (
         <ErrorBoundary>
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
@@ -111,7 +126,7 @@ export default function BendingPage() {
                 }}>
                     <div>
                         <h1 style={{ fontSize: 18, fontWeight: 700 }}>🔨 Bending & Production Control</h1>
-                        <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Phase 4: Shop Floor Execution Monitoring</p>
+                        <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Track CNC jobs dispatched from Phase 2. Operators log progress & trigger quality sign-off here.</p>
                     </div>
                     <button 
                         onClick={() => setGhostMode(!ghostMode)}
@@ -260,13 +275,32 @@ export default function BendingPage() {
                                     <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>Press #4 requires tooling check in 48h.</p>
                                 </div>
                             </div>
-                            <button className="btn-primary" style={{ height: '100%', fontSize: 14, fontWeight: 600 }}>
+                            <button
+                                className="btn-primary"
+                                style={{ height: '100%', fontSize: 14, fontWeight: 600 }}
+                                onClick={handleUpdateStatus}
+                            >
                                 Update Production Status
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {/* BEND-1: Toast notification */}
+            {toast && (
+                <div style={{
+                    position: 'fixed', bottom: 24, right: 24,
+                    background: '#10b981', color: 'white',
+                    padding: '12px 20px', borderRadius: 10,
+                    fontSize: 13, fontWeight: 600,
+                    boxShadow: '0 4px 20px rgba(16,185,129,0.4)',
+                    animation: 'fadeIn 0.2s ease-out',
+                    zIndex: 9999, display: 'flex', alignItems: 'center', gap: 8
+                }}>
+                    ✓ {toast}
+                </div>
+            )}
         </ErrorBoundary>
     );
 }

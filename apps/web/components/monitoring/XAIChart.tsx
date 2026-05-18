@@ -13,12 +13,12 @@ const MOCK_IMPORTANCES = [
 
 export const XAIChart = () => {
     return (
-        <div style={{ height: 260, width: '100%' }}>
+        <div style={{ height: 300, width: '100%' }}>
             <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 16, color: 'var(--text-primary)' }}>
                 Explainable AI: Feature Importances (Delay Risk)
             </h3>
             <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={MOCK_IMPORTANCES} layout="vertical" margin={{ left: 20 }}>
+                <BarChart data={MOCK_IMPORTANCES} layout="vertical" margin={{ left: 20, right: 20, bottom: 10, top: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--border-default)" />
                     <XAxis type="number" hide />
                     <YAxis 
@@ -47,3 +47,4 @@ export const XAIChart = () => {
         </div>
     );
 };
+

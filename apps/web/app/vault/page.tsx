@@ -72,6 +72,7 @@ export default function VaultPage() {
     const [activeCategory, setActiveCategory] = useState('All Documents');
     const [files, setFiles] = useState<VaultFile[]>([]);
     const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState(''); // VAULT-1
 
     // ── Skill DB state ─────────────────────────────────────────────────────
     const [leaders, setLeaders] = useState<TeamLeader[]>([]);
@@ -266,13 +267,15 @@ export default function VaultPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                         <div style={{ position: 'relative' }}>
                             <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                            <input 
-                                type="text" 
-                                placeholder="Search indexed docs..." 
-                                style={{ 
-                                    padding: '8px 12px 8px 36px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-default)', 
-                                    borderRadius: 8, fontSize: 12, width: 240, color: 'white', outline: 'none'
-                                }} 
+                            <input
+                                type="text"
+                                placeholder="Search indexed docs..."
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                style={{
+                                    padding: '8px 12px 8px 36px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-default)',
+                                    borderRadius: 8, fontSize: 12, width: 240, color: 'var(--text-primary)', outline: 'none'
+                                }}
                             />
                         </div>
                         <button 
@@ -339,37 +342,62 @@ export default function VaultPage() {
                     <div style={{ flex: 1, padding: 32, overflowY: 'auto' }}>
                         {activeSection === 'files' ? (
                             <>
+                                {/* VAULT-1 + VAULT-2: compute filtered list & duplicate set */}
+                                {(() => {
+                                    const q = searchQuery.trim().toLowerCase();
+                                    const filtered = files.filter(f => {
+                                        const matchCat = activeCategory === 'All Documents' || f.type === activeCategory;
+                                        const matchSearch = !q || [
+                                            f.name, f.type, f.poNumber
+                                        ].some(v => v?.toLowerCase().includes(q));
+                                        return matchCat && matchSearch;
+                                    });
+                                    // VAULT-2: names that appear more than once across ALL files
+                                    const nameCounts: Record<string, number> = {};
+                                    files.forEach(f => { nameCounts[f.name] = (nameCounts[f.name] || 0) + 1; });
+                                    const isDuplicate = (name: string) => nameCounts[name] > 1;
+
+                                    return (
+                                        <>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                                    <h2 style={{ fontSize: 16, fontWeight: 700 }}>Current Files <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 400, marginLeft: 8 }}>({files.length} items)</span></h2>
+                                    <h2 style={{ fontSize: 16, fontWeight: 700 }}>Current Files <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 400, marginLeft: 8 }}>({filtered.length} items{q ? ` matching "${searchQuery}"` : ''})</span></h2>
                                     <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', padding: 4, borderRadius: 6 }}>
                                         <button onClick={() => setViewMode('grid')} style={{ padding: 6, background: viewMode === 'grid' ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', borderRadius: 4, color: 'white', cursor: 'pointer' }}><LayoutGrid size={14} /></button>
                                         <button onClick={() => setViewMode('list')} style={{ padding: 6, background: viewMode === 'list' ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', borderRadius: 4, color: 'white', cursor: 'pointer' }}><ListIcon size={14} /></button>
                                     </div>
                                 </div>
 
-                                <div style={{ 
-                                    display: 'grid', 
-                                    gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(200px, 1fr))' : '1fr', 
-                                    gap: 16 
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(200px, 1fr))' : '1fr',
+                                    gap: 16
                                 }}>
-                                    {files.filter(f => activeCategory === 'All Documents' || f.type === activeCategory).map(file => (
-                                        <div key={file.id} className="glass-card" style={{ 
-                                            padding: 16, display: 'flex', 
+                                    {filtered.map(file => (
+                                        <div key={file.id} className="glass-card" style={{
+                                            padding: 16, display: 'flex',
                                             flexDirection: viewMode === 'grid' ? 'column' : 'row',
                                             alignItems: viewMode === 'grid' ? 'center' : 'center',
                                             gap: 12,
                                             position: 'relative'
                                         }}>
-                                            <div style={{ 
-                                                width: 48, height: 48, borderRadius: 12, background: 'rgba(255,255,255,0.03)', 
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center' 
+                                            {/* VAULT-2: Duplicate badge */}
+                                            {isDuplicate(file.name) && (
+                                                <span style={{
+                                                    position: 'absolute', top: 8, right: 8,
+                                                    padding: '2px 7px', background: 'rgba(245,158,11,0.15)',
+                                                    color: '#f59e0b', fontSize: 9, fontWeight: 700,
+                                                    borderRadius: 4, letterSpacing: '0.05em', border: '1px solid rgba(245,158,11,0.3)'
+                                                }}>DUPLICATE</span>
+                                            )}
+                                            <div style={{
+                                                width: 48, height: 48, borderRadius: 12, background: 'rgba(255,255,255,0.03)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
                                             }}>
                                                 <File size={24} color="var(--accent-primary)" />
                                             </div>
                                             <div style={{ flex: 1, textAlign: viewMode === 'grid' ? 'center' : 'left' }}>
                                                 <h4 style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{file.name}</h4>
                                                 <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{file.type} • {file.size}</p>
-                                                {/* PO details from extraction */}
                                                 {(file.poNumber || file.poValue) && (
                                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6, justifyContent: viewMode === 'grid' ? 'center' : 'flex-start' }}>
                                                         {file.poNumber && (
@@ -397,6 +425,9 @@ export default function VaultPage() {
                                         </div>
                                     ))}
                                 </div>
+                                        </>
+                                    );
+                                })()}
                             </>
                         ) : (
                             <div className="animate-fade-in">
